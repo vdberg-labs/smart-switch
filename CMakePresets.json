@@ -13,6 +13,7 @@
             "cacheVariables": {
                 "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
                 "CONF_FILE": "${sourceDir}/prj.conf",
+                "EXTRA_CONF_FILE": "${sourceDir}/prj_debug.conf",
                 "DEBUG_BUILD": true
             }
         },
@@ -23,7 +24,8 @@
             "binaryDir": "${sourceDir}/build_release",
             "cacheVariables": {
                 "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
-                "CONF_FILE": "${sourceDir}/prj_release.conf",
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "EXTRA_CONF_FILE": "${sourceDir}/prj_release.conf",
                 "DEBUG_BUILD": false
             }
         }
