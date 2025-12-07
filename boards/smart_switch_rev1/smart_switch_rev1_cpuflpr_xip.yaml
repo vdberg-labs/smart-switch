@@ -1,0 +1,18 @@
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: smart_switch_rev1/nrf54l15/cpuflpr/xip
+name: Smart-Switch-REV1-nRF54l15-Fast-Lightweight-Peripheral-Processor-XIP
+type: mcu
+arch: riscv
+toolchain:
+  - zephyr
+sysbuild: true
+ram: 68
+flash: 96
+supported:
+  - counter
+  - gpio
+  - i2c
+  - spi
+  - watchdog

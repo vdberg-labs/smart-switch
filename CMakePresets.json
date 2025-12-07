@@ -1,0 +1,31 @@
+{
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20
+    },
+    "configurePresets": [
+        {
+            "name": "debug_build",
+            "displayName": "DEBUG build for rev_1",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build_debug",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "DEBUG_BUILD": true
+            }
+        },
+        {
+            "name": "release_build",
+            "displayName": "RELEASE build for rev_1",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build_release",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
+                "CONF_FILE": "${sourceDir}/prj_release.conf",
+                "DEBUG_BUILD": false
+            }
+        }
+    ]
+}
