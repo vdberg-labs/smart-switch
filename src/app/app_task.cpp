@@ -39,9 +39,6 @@ bool sWasDimmerTriggered = false;
 
 #define APPLICATION_BUTTON_MASK DK_BTN2_MSK
 
-#ifdef CONFIG_CHIP_ICD_UAT_SUPPORT
-#define UAT_BUTTON_MASK DK_BTN3_MSK
-#endif
 } /* namespace */
 
 void AppTask::DimmerTriggerEventHandler()
@@ -91,11 +88,6 @@ void AppTask::ButtonEventHandler(Nrf::ButtonState state, Nrf::ButtonMask hasChan
 		Instance().StartTimer(Timer::DimmerTrigger, kDimmerTriggeredTimeout);
 	} else if ((APPLICATION_BUTTON_MASK & hasChanged)) {
 		Nrf::PostTask([] { DimmerTriggerEventHandler(); });
-#ifdef CONFIG_CHIP_ICD_UAT_SUPPORT
-	} else if ((UAT_BUTTON_MASK & state & hasChanged)) {
-		LOG_INF("ICD UserActiveMode has been triggered.");
-		Server::GetInstance().GetICDManager().OnNetworkActivity();
-#endif
 	}
 }
 
