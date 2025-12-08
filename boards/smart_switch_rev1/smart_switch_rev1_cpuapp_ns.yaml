@@ -11,13 +11,11 @@ toolchain:
 ram: 256
 flash: 1524
 supported:
-  - adc
   - gpio
   - i2c
   - spi
   - counter
   - watchdog
-  - adc
   - i2s
 vendor: nordic
 sysbuild: true
