@@ -35,13 +35,7 @@
 	};
 };
 
-&uart20 {
-	current-speed = <115200>;
-	pinctrl-0 = <&uart20_default>;
-	pinctrl-1 = <&uart20_sleep>;
-	pinctrl-names = "default", "sleep";
-};
-
+/* We're required to use uart30 because of modules/tee/tf-m/trusted-firmware-m/platform/ext/target/nordic_nrf/common/nrf54l/config.cmake */
 &uart30 {
 	current-speed = <115200>;
 	pinctrl-0 = <&uart30_default>;
