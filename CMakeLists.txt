@@ -31,13 +31,8 @@ target_include_directories(app PRIVATE
 
 target_compile_options(app PRIVATE -Wno-deprecated-declarations)
 
-target_sources(app PRIVATE
-    src/app_task.cpp
-    src/light_switch.cpp
-    src/main.cpp
-    src/shell_commands.cpp
-    ${ZEPHYR_NRF_MODULE_DIR}/samples/matter/common/src/binding/binding_handler.cpp
-)
+# Add sources from src directory
+add_subdirectory(src)
 
 ncs_configure_data_model()
 # NORDIC SDK APP END
