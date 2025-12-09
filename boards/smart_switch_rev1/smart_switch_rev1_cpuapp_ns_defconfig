@@ -33,3 +33,5 @@ CONFIG_TFM_LOG_LEVEL_SILENCE=n
 # otherwise nrfx will try to configure them, resulting in a bus
 # fault.
 CONFIG_SOC_NRF54LX_SKIP_CLOCK_CONFIG=y
+
+CONFIG_CLOCK_CONTROL_NRF_K32SRC_RC=y
