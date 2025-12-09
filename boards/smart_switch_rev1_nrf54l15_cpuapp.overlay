@@ -26,7 +26,7 @@
 };
 
 // TODO: re-enable HWFC once it's fixed
-&uart20 {
+&uart00 {
 	/delete-property/ hw-flow-control;
 };
 

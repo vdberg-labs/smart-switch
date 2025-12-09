@@ -10,11 +10,11 @@
 
 / {
 	chosen {
-		zephyr,console = &uart20;
-		zephyr,shell-uart = &uart20;
-		zephyr,uart-mcumgr = &uart20;
-		zephyr,bt-mon-uart = &uart20;
-		zephyr,bt-c2h-uart = &uart20;
+		zephyr,console = &uart00;
+		zephyr,shell-uart = &uart00;
+		zephyr,uart-mcumgr = &uart00;
+		zephyr,bt-mon-uart = &uart00;
+		zephyr,bt-c2h-uart = &uart00;
 		zephyr,flash-controller = &rram_controller;
 		zephyr,flash = &cpuapp_rram;
 		zephyr,ieee802154 = &ieee802154;
@@ -60,7 +60,7 @@
 	status = "okay";
 };
 
-&uart20 {
+&uart00 {
 	status = "okay";
 };
 
