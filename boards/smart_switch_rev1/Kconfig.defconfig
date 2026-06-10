@@ -17,7 +17,7 @@ if BOARD_SMART_SWITCH_REV1_CPUAPP_NS
 config BOARD_SMART_SWITCH_REV1
 	select USE_DT_CODE_PARTITION if BOARD_SMART_SWITCH_REV1_CPUAPP_NS
 
-config BT_CTLR
+config HAS_BT_CTLR
 	default BT
 
 # By default, if we build for a Non-Secure version of the board,

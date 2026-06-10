@@ -6,16 +6,20 @@
 
 #include "app_task.h"
 
-#include "light_switch.h"
-
 #include "app/matter_init.h"
 #include "app/task_executor.h"
 #include "board/board.h"
+#include "clusters/identify.h"
 
-#include <app/clusters/identify-server/identify-server.h>
 #include <setup_payload/OnboardingCodesUtil.h>
 
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/gpio.h>
+
+#include <app/EventLogging.h>
+#include <app-common/zap-generated/cluster-objects.h>
+#include <app-common/zap-generated/attributes/Accessors.h>
+#include <platform/CHIPDeviceLayer.h>
 
 LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 
@@ -25,138 +29,212 @@ using namespace ::chip::DeviceLayer;
 
 namespace
 {
-constexpr uint32_t kDimmerTriggeredTimeout = 500;
-constexpr uint32_t kDimmerInterval = 300;
-constexpr EndpointId kLightSwitchEndpointId = 1;
 constexpr EndpointId kLightEndpointId = 1;
 
-k_timer sDimmerPressKeyTimer;
-k_timer sDimmerTimer;
+Nrf::Matter::IdentifyCluster sIdentifyCluster(kLightEndpointId);
 
-Identify sIdentify = { kLightEndpointId, AppTask::IdentifyStartHandler, AppTask::IdentifyStopHandler,
-		       Clusters::Identify::IdentifyTypeEnum::kVisibleIndicator };
-bool sWasDimmerTriggered = false;
+/* --- Gesture engine for the two pulse-switch inputs (polled) ---
+ * Samples each contact every kPollMs and classifies single / double / triple tap and hold, per
+ * channel, matching the Matter Generic Switch (0x003B) event model (tap-count -> MultiPressComplete,
+ * hold -> LongPress/LongRelease). sw0 = SWITCH1 (P1.01/C9), sw1 = SWITCH2 (P2.04/K9). Active-low.
+ *
+ * NOTE: polling (not edge interrupts) because on nRF54L15 port P2 has NO GPIOTE instance
+ * (SoC DTS: gpio0->gpiote30, gpio1->gpiote20, gpio2->none), so SWITCH2 (P2.04) cannot use GPIO
+ * edge interrupts (gpio_pin_interrupt_configure returns -ENOTSUP). A 5 ms poll is uniform across
+ * both channels and negligible here (mains-powered, radio always on as an RxOn MED). */
+const struct gpio_dt_spec sSwitch0 = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
+const struct gpio_dt_spec sSwitch1 = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
 
-#define APPLICATION_BUTTON_MASK DK_BTN2_MSK
+constexpr int64_t kLongPressMs = 600; /* press held this long -> HOLD */
+constexpr int64_t kMultiGapMs = 250;  /* max gap between taps in a multi-tap sequence */
+constexpr uint32_t kPollMs = 5;       /* sampling interval (also coarse debounce) */
 
+/* Per-channel gesture configuration.
+ *   maxTaps:     1 = single only, 2 = up to double, 3 = up to triple.
+ *   holdEnabled: detect a long press (HOLD / HOLD released).
+ * Responsiveness: with maxTaps==1 AND holdEnabled==false a single tap fires immediately on the
+ * press edge; with maxTaps==1 AND holdEnabled it fires on release; with maxTaps>=2 the engine
+ * waits kMultiGapMs to count taps. Defaults are compile-time; can move to Kconfig/runtime. */
+struct GestureConfig {
+	uint8_t maxTaps;
+	bool holdEnabled;
+};
+
+struct GestureChannel {
+	const gpio_dt_spec *spec;
+	const char *name;
+	EndpointId endpoint; /* Matter Generic Switch endpoint this channel reports on */
+	GestureConfig cfg;
+	bool pressed;
+	bool longFired;
+	bool handled; /* single tap already emitted on the press edge (fast path) */
+	uint8_t pressCount;
+	int64_t pressStart;
+	int64_t lastRelease;
+};
+
+/* Endpoints must match the Generic Switch endpoints created in the ZAP data model:
+ * SWITCH1 -> endpoint 1, SWITCH2 -> endpoint 2. */
+GestureChannel sChannels[] = {
+	{ &sSwitch0, "SWITCH1", 1, { 3, true }, false, false, false, 0, 0, 0 },
+	{ &sSwitch1, "SWITCH2", 2, { 3, true }, false, false, false, 0, 0, 0 },
+};
+
+k_work_delayable sGestureWork;
+
+enum class SwEvt { InitialPress, ShortRelease, LongPress, LongRelease, MultiPressComplete };
+
+/* Emit a Matter Generic Switch (0x003B) event on the given endpoint. Scheduled onto the Matter
+ * thread (ScheduleLambda) because cluster/event APIs require the CHIP stack lock. Harmless no-op
+ * until the Switch cluster is added to that endpoint via ZAP. */
+void SwitchEmit(EndpointId ep, SwEvt evt, uint8_t count)
+{
+	chip::DeviceLayer::SystemLayer().ScheduleLambda([ep, evt, count]() {
+		using namespace chip::app::Clusters;
+		chip::EventNumber en = 0;
+		switch (evt) {
+		case SwEvt::InitialPress: {
+			Switch::Attributes::CurrentPosition::Set(ep, 1);
+			Switch::Events::InitialPress::Type e{ 1 };
+			chip::app::LogEvent(e, ep, en);
+			break;
+		}
+		case SwEvt::ShortRelease: {
+			Switch::Attributes::CurrentPosition::Set(ep, 0);
+			Switch::Events::ShortRelease::Type e{};
+			e.previousPosition = 1;
+			chip::app::LogEvent(e, ep, en);
+			break;
+		}
+		case SwEvt::LongPress: {
+			Switch::Events::LongPress::Type e{ 1 };
+			chip::app::LogEvent(e, ep, en);
+			break;
+		}
+		case SwEvt::LongRelease: {
+			Switch::Attributes::CurrentPosition::Set(ep, 0);
+			Switch::Events::LongRelease::Type e{};
+			e.previousPosition = 1;
+			chip::app::LogEvent(e, ep, en);
+			break;
+		}
+		case SwEvt::MultiPressComplete: {
+			Switch::Events::MultiPressComplete::Type e{};
+			e.previousPosition = 0;
+			e.totalNumberOfPressesCounted = count;
+			chip::app::LogEvent(e, ep, en);
+			break;
+		}
+		}
+	});
+}
+
+void EmitTap(const GestureChannel &ch, uint8_t n)
+{
+	const char *label = (n == 1) ? "SINGLE TAP" : (n == 2) ? "DOUBLE TAP" : "TRIPLE TAP";
+	LOG_INF("GESTURE %s: %s (count=%u)", ch.name, label, n);
+	SwitchEmit(ch.endpoint, SwEvt::MultiPressComplete, n);
+}
+
+void GestureProcess(GestureChannel &ch, int64_t now)
+{
+	int level = gpio_pin_get_dt(ch.spec); /* logical: 1 = pressed, <0 = error */
+	if (level < 0) {
+		return;
+	}
+	bool nowPressed = (level > 0);
+
+	if (nowPressed != ch.pressed) {
+		ch.pressed = nowPressed;
+		if (nowPressed) {
+			/* press edge */
+			ch.pressStart = now;
+			ch.longFired = false;
+			if (ch.pressCount < ch.cfg.maxTaps) {
+				ch.pressCount++;
+			}
+			SwitchEmit(ch.endpoint, SwEvt::InitialPress, 0);
+			if (ch.cfg.maxTaps == 1 && !ch.cfg.holdEnabled) {
+				EmitTap(ch, 1); /* fast path: fire on press (also MultiPressComplete) */
+				ch.pressCount = 0;
+				ch.handled = true;
+			}
+		} else {
+			/* release edge */
+			if (ch.longFired) {
+				LOG_INF("GESTURE %s: HOLD released", ch.name);
+				SwitchEmit(ch.endpoint, SwEvt::LongRelease, 0);
+				ch.pressCount = 0; /* a hold terminates the sequence */
+			} else {
+				SwitchEmit(ch.endpoint, SwEvt::ShortRelease, 0);
+				if (ch.handled) {
+					ch.handled = false;
+				} else if (ch.cfg.maxTaps == 1) {
+					EmitTap(ch, 1); /* single+hold config: fire on release */
+					ch.pressCount = 0;
+				}
+			}
+			ch.lastRelease = now;
+		}
+		return;
+	}
+
+	/* no edge: detect hold while pressed, or multi-tap completion while released */
+	if (ch.pressed) {
+		if (ch.cfg.holdEnabled && !ch.handled && !ch.longFired && (now - ch.pressStart) >= kLongPressMs) {
+			ch.longFired = true;
+			LOG_INF("GESTURE %s: HOLD", ch.name);
+			SwitchEmit(ch.endpoint, SwEvt::LongPress, 0);
+		}
+	} else if (ch.cfg.maxTaps >= 2 && ch.pressCount > 0 && (now - ch.lastRelease) >= kMultiGapMs) {
+		uint8_t n = ch.pressCount;
+		ch.pressCount = 0;
+		EmitTap(ch, n);
+	}
+}
+
+void GestureWorkHandler(k_work *)
+{
+	int64_t now = k_uptime_get();
+	for (auto &ch : sChannels) {
+		GestureProcess(ch, now);
+	}
+	k_work_reschedule(&sGestureWork, K_MSEC(kPollMs));
+}
 } /* namespace */
 
-void AppTask::DimmerTriggerEventHandler()
+void AppTask::ButtonEventHandler(Nrf::ButtonState, Nrf::ButtonMask)
 {
-	if (!sWasDimmerTriggered) {
-		LightSwitch::GetInstance().InitiateActionSwitch(LightSwitch::Action::Toggle);
-	}
-
-	Instance().CancelTimer(Timer::Dimmer);
-	Instance().CancelTimer(Timer::DimmerTrigger);
-	sWasDimmerTriggered = false;
-}
-
-void AppTask::TimerEventHandler(const Timer &timerType)
-{
-	switch (timerType) {
-	case Timer::DimmerTrigger:
-		LOG_INF("Dimming started...");
-		sWasDimmerTriggered = true;
-		LightSwitch::GetInstance().InitiateActionSwitch(LightSwitch::Action::On);
-		Instance().StartTimer(Timer::Dimmer, kDimmerInterval);
-		Instance().CancelTimer(Timer::DimmerTrigger);
-		break;
-	case Timer::Dimmer:
-		LightSwitch::GetInstance().DimmerChangeBrightness();
-		break;
-	default:
-		break;
-	}
-}
-
-void AppTask::IdentifyStartHandler(Identify *)
-{
-	Nrf::PostTask(
-		[] { Nrf::GetBoard().GetLED(Nrf::DeviceLeds::LED2).Blink(Nrf::LedConsts::kIdentifyBlinkRate_ms); });
-}
-
-void AppTask::IdentifyStopHandler(Identify *)
-{
-	Nrf::PostTask([] { Nrf::GetBoard().GetLED(Nrf::DeviceLeds::LED2).Set(false); });
-}
-
-void AppTask::ButtonEventHandler(Nrf::ButtonState state, Nrf::ButtonMask hasChanged)
-{
-	if ((APPLICATION_BUTTON_MASK & state & hasChanged)) {
-		LOG_INF("Button has been pressed, keep in this state for at least 500 ms to change light sensitivity of bound lighting devices.");
-		Instance().StartTimer(Timer::DimmerTrigger, kDimmerTriggeredTimeout);
-	} else if ((APPLICATION_BUTTON_MASK & hasChanged)) {
-		Nrf::PostTask([] { DimmerTriggerEventHandler(); });
-	}
-}
-
-void AppTask::StartTimer(Timer timer, uint32_t timeoutMs)
-{
-	switch (timer) {
-	case Timer::DimmerTrigger:
-		k_timer_start(&sDimmerPressKeyTimer, K_MSEC(timeoutMs), K_NO_WAIT);
-		break;
-	case Timer::Dimmer:
-		k_timer_start(&sDimmerTimer, K_MSEC(timeoutMs), K_MSEC(timeoutMs));
-		break;
-	default:
-		break;
-	}
-}
-
-void AppTask::CancelTimer(Timer timer)
-{
-	switch (timer) {
-	case Timer::DimmerTrigger:
-		k_timer_stop(&sDimmerPressKeyTimer);
-		break;
-	case Timer::Dimmer:
-		k_timer_stop(&sDimmerTimer);
-		break;
-	default:
-		break;
-	}
-}
-
-void AppTask::UserTimerTimeoutCallback(k_timer *timer)
-{
-	if (!timer) {
-		return;
-	}
-	Timer timerType;
-
-	if (timer == &sDimmerPressKeyTimer) {
-		timerType = Timer::DimmerTrigger;
-	} else if (timer == &sDimmerTimer) {
-		timerType = Timer::Dimmer;
-	} else {
-		return;
-	}
-
-	Nrf::PostTask([timerType]() { TimerEventHandler(timerType); });
+	/* No on-board buttons (CONFIG_DK_LIBRARY=n); the pulse-switch inputs are handled by the
+	 * gesture engine. Kept as a no-op to satisfy the Board interface. */
 }
 
 CHIP_ERROR AppTask::Init()
 {
 	/* Initialize Matter stack */
-	ReturnErrorOnFailure(Nrf::Matter::PrepareServer(Nrf::Matter::InitData{ .mPostServerInitClbk = [] {
-		LightSwitch::GetInstance().Init(kLightSwitchEndpointId);
-		return CHIP_NO_ERROR;
-	} }));
-
-	/* Initialize application timers */
-	k_timer_init(&sDimmerPressKeyTimer, AppTask::UserTimerTimeoutCallback, nullptr);
-	k_timer_init(&sDimmerTimer, AppTask::UserTimerTimeoutCallback, nullptr);
+	ReturnErrorOnFailure(Nrf::Matter::PrepareServer());
 
 	if (!Nrf::GetBoard().Init(ButtonEventHandler)) {
 		LOG_ERR("User interface initialization failed.");
 		return CHIP_ERROR_INCORRECT_STATE;
 	}
 
+	/* Start the (polled) gesture engine on the two pulse-switch inputs. */
+	if (gpio_is_ready_dt(&sSwitch0) && gpio_is_ready_dt(&sSwitch1)) {
+		gpio_pin_configure_dt(&sSwitch0, GPIO_INPUT);
+		gpio_pin_configure_dt(&sSwitch1, GPIO_INPUT);
+		k_work_init_delayable(&sGestureWork, GestureWorkHandler);
+		k_work_reschedule(&sGestureWork, K_MSEC(kPollMs));
+		LOG_INF("Gesture engine started: SWITCH1=P1.01/C9, SWITCH2=P2.04/K9");
+	} else {
+		LOG_ERR("Switch GPIOs not ready");
+	}
+
 	/* Register Matter event handler that controls the connectivity status LED based on the captured Matter network
 	 * state. */
 	ReturnErrorOnFailure(Nrf::Matter::RegisterEventHandler(Nrf::Board::DefaultMatterEventHandler, 0));
+
+	ReturnErrorOnFailure(sIdentifyCluster.Init());
 
 	return Nrf::Matter::StartServer();
 }

@@ -9,7 +9,7 @@
             "name": "debug_build_without_bl",
             "displayName": "DEBUG build without bl for rev_1",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build_debug_without_bl",
+            "binaryDir": "${sourceDir}/dw",
             "cacheVariables": {
                 "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
                 "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch_without_bl.yml",
@@ -23,7 +23,7 @@
             "name": "debug_build",
             "displayName": "DEBUG build for rev_1",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build_debug",
+            "binaryDir": "${sourceDir}/db",
             "cacheVariables": {
                 "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
                 "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch.yml",
@@ -37,7 +37,7 @@
             "name": "release_build",
             "displayName": "RELEASE build for rev_1",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build_release",
+            "binaryDir": "${sourceDir}/rb",
             "cacheVariables": {
                 "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
                 "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch.yml",

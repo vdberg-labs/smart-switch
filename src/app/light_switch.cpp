@@ -12,13 +12,14 @@
 #endif
 
 #include <app/server/Server.h>
-#include <app/util/binding-table.h>
+#include <app/clusters/bindings/binding-table.h>
 #include <controller/InvokeInteraction.h>
 #include <platform/CHIPDeviceLayer.h>
 #include <zephyr/logging/log.h>
 
 using namespace chip;
 using namespace chip::app;
+using namespace chip::app::Clusters;
 
 LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 
@@ -77,10 +78,10 @@ void LightSwitch::DimmerChangeBrightness()
 	}
 }
 
-void LightSwitch::SwitchChangedHandler(const EmberBindingTableEntry &binding, OperationalDeviceProxy *deviceProxy,
+void LightSwitch::SwitchChangedHandler(const Binding::TableEntry &binding, OperationalDeviceProxy *deviceProxy,
 				       Nrf::Matter::BindingHandler::BindingData &bindingData)
 {
-	if (binding.type == MATTER_MULTICAST_BINDING) {
+	if (binding.type == Binding::MATTER_MULTICAST_BINDING) {
 		switch (bindingData.ClusterId) {
 		case Clusters::OnOff::Id:
 			OnOffProcessCommand(bindingData.CommandId, binding, nullptr, bindingData);
@@ -92,7 +93,7 @@ void LightSwitch::SwitchChangedHandler(const EmberBindingTableEntry &binding, Op
 			ChipLogError(NotSpecified, "Invalid binding group command data");
 			break;
 		}
-	} else if (binding.type == MATTER_UNICAST_BINDING) {
+	} else if (binding.type == Binding::MATTER_UNICAST_BINDING) {
 		switch (bindingData.ClusterId) {
 		case Clusters::OnOff::Id:
 			OnOffProcessCommand(bindingData.CommandId, binding, deviceProxy, bindingData);
@@ -107,7 +108,7 @@ void LightSwitch::SwitchChangedHandler(const EmberBindingTableEntry &binding, Op
 	}
 }
 
-void LightSwitch::OnOffProcessCommand(CommandId commandId, const EmberBindingTableEntry &binding,
+void LightSwitch::OnOffProcessCommand(CommandId commandId, const Binding::TableEntry &binding,
 				      OperationalDeviceProxy *device,
 				      Nrf::Matter::BindingHandler::BindingData &bindingData)
 {
@@ -178,7 +179,7 @@ void LightSwitch::OnOffProcessCommand(CommandId commandId, const EmberBindingTab
 	}
 }
 
-void LightSwitch::LevelControlProcessCommand(CommandId commandId, const EmberBindingTableEntry &binding,
+void LightSwitch::LevelControlProcessCommand(CommandId commandId, const Binding::TableEntry &binding,
 					     OperationalDeviceProxy *device,
 					     Nrf::Matter::BindingHandler::BindingData &bindingData)
 {
