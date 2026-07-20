@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Smart Switch Config</title>
+<style>
+	body {
+		font-family: system-ui, sans-serif;
+		max-width: 32rem;
+		margin: 2rem auto;
+		padding: 0 1rem;
+		color: #1a1a1a;
+	}
+	h1 { font-size: 1.25rem; }
+	fieldset { margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 6px; }
+	legend { font-weight: 600; padding: 0 0.4rem; }
+	label { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0.5rem 0; }
+	label span { flex: 1; }
+	input[type="number"] { width: 5rem; }
+	button { padding: 0.5rem 1rem; margin-right: 0.5rem; }
+	#status { margin-top: 1rem; font-size: 0.9rem; white-space: pre-wrap; }
+	.error { color: #b00020; }
+	.ok { color: #1a7a1a; }
+	#form { opacity: 0.4; pointer-events: none; }
+	#form.enabled { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+<h1>Smart Switch — Gesture Config</h1>
+<p>
+	Hold either switch input for 10 seconds to open the device's BLE config window (5 minutes,
+	or until this page disconnects), then click Connect.
+</p>
+<div>
+	<button id="connect">Connect</button>
+	<button id="save" disabled>Save to device</button>
+</div>
+
+<form id="form">
+	<fieldset>
+		<legend>Channels</legend>
+		<label><span>Active channels</span>
+			<select id="numChannels">
+				<option value="1">1</option>
+				<option value="2">2</option>
+			</select>
+		</label>
+	</fieldset>
+
+	<fieldset>
+		<legend>Timing</legend>
+		<label><span>Poll interval (ms)</span><input id="pollMs" type="number" min="1" max="50" /></label>
+		<label><span>Long-press / hold threshold (ms)</span><input id="longPressMs" type="number" min="200" max="5000" /></label>
+		<label><span>Multi-tap gap (ms)</span><input id="multiGapMs" type="number" min="50" max="2000" /></label>
+	</fieldset>
+
+	<fieldset>
+		<legend>Channel 1 (SWITCH1)</legend>
+		<label><span>Max taps</span><input id="ch0-maxTaps" type="number" min="1" max="5" /></label>
+		<label><span>Hold enabled</span><input id="ch0-holdEnabled" type="checkbox" /></label>
+	</fieldset>
+
+	<fieldset>
+		<legend>Channel 2 (SWITCH2)</legend>
+		<label><span>Max taps</span><input id="ch1-maxTaps" type="number" min="1" max="5" /></label>
+		<label><span>Hold enabled</span><input id="ch1-holdEnabled" type="checkbox" /></label>
+	</fieldset>
+</form>
+
+<div id="status"></div>
+
+<script type="module" src="/src/main.ts"></script>
+</body>
+</html>

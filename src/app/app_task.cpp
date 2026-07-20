@@ -6,6 +6,9 @@
 
 #include "app_task.h"
 
+#include "ble/ble_config_mode.h"
+#include "ble/gesture_config_service.h"
+#include "config/config_store.h"
 #include "gesture/gesture_engine.h"
 #include "matter/matter_switch_protocol.h"
 
@@ -36,7 +39,8 @@ Nrf::Matter::IdentifyCluster sIdentifyCluster(kLightEndpointId);
  * ISwitchProtocol interface. Today that backend is Matter (Generic Switch); a Zigbee backend slots in
  * by swapping only this one object — the engine is unchanged. */
 SmartSwitch::MatterSwitchProtocol sSwitchProtocol;
-SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol);
+SmartSwitch::BleConfigMode sBleConfigMode;
+SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode);
 } /* namespace */
 
 void AppTask::ButtonEventHandler(Nrf::ButtonState, Nrf::ButtonMask)
@@ -47,7 +51,6 @@ void AppTask::ButtonEventHandler(Nrf::ButtonState, Nrf::ButtonMask)
 
 CHIP_ERROR AppTask::Init()
 {
-	/* Initialize Matter stack */
 	ReturnErrorOnFailure(Nrf::Matter::PrepareServer());
 
 	if (!Nrf::GetBoard().Init(ButtonEventHandler)) {
@@ -56,6 +59,9 @@ CHIP_ERROR AppTask::Init()
 	}
 
 	sGestureEngine.Start();
+	sGestureEngine.ApplyConfig(SmartSwitch::ConfigStore::Load());
+	sBleConfigMode.Init();
+	SmartSwitch::GestureConfigService::Init(sGestureEngine, sBleConfigMode);
 
 	ReturnErrorOnFailure(Nrf::Matter::RegisterEventHandler(Nrf::Board::DefaultMatterEventHandler, 0));
 
