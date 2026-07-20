@@ -1,0 +1,128 @@
+/*
+ * Copyright (c) 2022 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+ */
+
+#include "gesture_engine.h"
+
+#include <zephyr/logging/log.h>
+
+LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
+
+namespace SmartSwitch
+{
+namespace
+{
+const gpio_dt_spec sSwitch0 = GPIO_DT_SPEC_GET(DT_ALIAS(sw0), gpios);
+const gpio_dt_spec sSwitch1 = GPIO_DT_SPEC_GET(DT_ALIAS(sw1), gpios);
+
+constexpr int64_t kLongPressMs = 600; /* press held this long -> HOLD */
+constexpr int64_t kMultiGapMs = 250;  /* max gap between taps in a multi-tap sequence */
+constexpr uint32_t kPollMs = 5;       /* sampling interval (also coarse debounce) */
+} /* namespace */
+
+GestureEngine::GestureEngine(ISwitchProtocol &sink)
+	: mSink(sink),
+	  mChannels{
+		  { &sSwitch0, "SWITCH1", 0, { 3, true }, false, false, false, 0, 0, 0 },
+		  { &sSwitch1, "SWITCH2", 1, { 3, true }, false, false, false, 0, 0, 0 },
+	  }
+{
+}
+
+int GestureEngine::Start()
+{
+	if (!gpio_is_ready_dt(&sSwitch0) || !gpio_is_ready_dt(&sSwitch1)) {
+		LOG_ERR("Switch GPIOs not ready");
+		return -ENODEV;
+	}
+
+	gpio_pin_configure_dt(&sSwitch0, GPIO_INPUT);
+	gpio_pin_configure_dt(&sSwitch1, GPIO_INPUT);
+
+	k_work_init_delayable(&mWork, WorkHandler);
+	k_work_reschedule(&mWork, K_MSEC(kPollMs));
+	LOG_INF("Gesture engine started: SWITCH1=P1.01/C9, SWITCH2=P2.04/K9");
+	return 0;
+}
+
+void GestureEngine::EmitTap(Channel &ch, uint8_t taps)
+{
+	const char *label = (taps == 1) ? "SINGLE TAP" : (taps == 2) ? "DOUBLE TAP" : "TRIPLE TAP";
+	LOG_INF("GESTURE %s: %s (count=%u)", ch.name, label, taps);
+	mSink.OnGesture(ch.index, Gesture::Tap, taps);
+}
+
+void GestureEngine::Process(Channel &ch, int64_t now)
+{
+	int level = gpio_pin_get_dt(ch.spec); /* logical: 1 = pressed, <0 = error */
+	if (level < 0) {
+		return;
+	}
+	bool nowPressed = (level > 0);
+
+	if (nowPressed != ch.pressed) {
+		ch.pressed = nowPressed;
+		if (nowPressed) {
+			/* press edge */
+			ch.pressStart = now;
+			ch.longFired = false;
+			if (ch.pressCount < ch.cfg.maxTaps) {
+				ch.pressCount++;
+			}
+			mSink.OnGesture(ch.index, Gesture::InitialPress, 0);
+			if (ch.cfg.maxTaps == 1 && !ch.cfg.holdEnabled) {
+				EmitTap(ch, 1); /* fast path: fire on press */
+				ch.pressCount = 0;
+				ch.handled = true;
+			}
+		} else {
+			/* release edge */
+			if (ch.longFired) {
+				LOG_INF("GESTURE %s: HOLD released", ch.name);
+				mSink.OnGesture(ch.index, Gesture::LongRelease, 0);
+				ch.pressCount = 0; /* a hold terminates the sequence */
+			} else {
+				mSink.OnGesture(ch.index, Gesture::ShortRelease, 0);
+				if (ch.handled) {
+					ch.handled = false;
+				} else if (ch.cfg.maxTaps == 1) {
+					EmitTap(ch, 1); /* single+hold config: fire on release */
+					ch.pressCount = 0;
+				}
+			}
+			ch.lastRelease = now;
+		}
+		return;
+	}
+
+	/* no edge: detect hold while pressed, or multi-tap completion while released */
+	if (ch.pressed) {
+		if (ch.cfg.holdEnabled && !ch.handled && !ch.longFired &&
+		    (now - ch.pressStart) >= kLongPressMs) {
+			ch.longFired = true;
+			LOG_INF("GESTURE %s: HOLD", ch.name);
+			mSink.OnGesture(ch.index, Gesture::LongPress, 0);
+		}
+	} else if (ch.cfg.maxTaps >= 2 && ch.pressCount > 0 &&
+		   (now - ch.lastRelease) >= kMultiGapMs) {
+		uint8_t n = ch.pressCount;
+		ch.pressCount = 0;
+		EmitTap(ch, n);
+	}
+}
+
+void GestureEngine::WorkHandler(k_work *work)
+{
+	k_work_delayable *dwork = k_work_delayable_from_work(work);
+	GestureEngine *self = CONTAINER_OF(dwork, GestureEngine, mWork);
+
+	int64_t now = k_uptime_get();
+	for (auto &ch : self->mChannels) {
+		self->Process(ch, now);
+	}
+	k_work_reschedule(&self->mWork, K_MSEC(kPollMs));
+}
+
+} /* namespace SmartSwitch */
