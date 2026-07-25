@@ -1,29 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="wa-theme-default wa-dark">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Smart Switch</title>
 <meta name="description" content="A retrofit module that adds Matter-over-Thread gestures and Bluetooth configuration to your existing wall pulse switch." />
+<link rel="stylesheet" href="https://ka-f.webawesome.com/webawesome@3.10.0/styles/webawesome.css" />
+<script type="module" src="https://ka-f.webawesome.com/webawesome@3.10.0/webawesome.loader.js"></script>
 <style>
-	:root {
-		--ink: #eceee8;
-		--paper: #12100d;
-		--paper-raised: #1b1815;
-		--patina: #7fbba9;
-		--patina-strong: #9ed4c3;
-		--copper: #d98a5e;
-		--line: #3c3a34;
-		--line-soft: #262420;
+	:where(:root), .wa-dark {
+		--wa-color-surface-default: #12100d;
+		--wa-color-surface-raised: #1b1815;
+		--wa-color-surface-border: #3c3a34;
+		--wa-color-text-normal: #eceee8;
+		--wa-color-text-link: #9ed4c3;
 	}
 
 	* { box-sizing: border-box; }
-
-	html, body {
-		margin: 0;
-		background: var(--paper);
-		color: var(--ink);
-	}
 
 	body {
 		font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -54,18 +47,10 @@
 		text-wrap: balance;
 	}
 
-	.tagline {
-		margin: -1.1rem 0 0;
-		font-size: 0.95rem;
-		color: var(--patina-strong);
-		font-weight: 500;
-	}
-
 	p.lede {
 		margin: 0;
 		font-size: 1rem;
 		line-height: 1.6;
-		color: var(--ink);
 		opacity: 0.75;
 		text-wrap: balance;
 	}
@@ -78,53 +63,22 @@
 		margin: 0.25rem 0;
 	}
 
-	.pill {
-		font-size: 0.78rem;
-		letter-spacing: 0.02em;
-		padding: 0.35rem 0.75rem;
-		border: 1px solid var(--line);
-		border-radius: 999px;
-		color: var(--ink);
-		opacity: 0.8;
-	}
-
-	.cta {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		margin-top: 0.5rem;
-		padding: 0.75rem 1.5rem;
-		background: var(--patina-strong);
-		color: #0d1512;
-		font-weight: 700;
-		font-size: 0.98rem;
-		text-decoration: none;
-		border-radius: 8px;
-		transition: transform 0.1s ease;
-	}
-
-	.cta:hover { transform: translateY(-1px); }
-	.cta:active { transform: translateY(0); }
-
 	.cta-note {
 		margin: -1rem 0 0;
 		font-size: 0.78rem;
-		color: var(--ink);
 		opacity: 0.5;
 	}
 
 	footer {
 		margin-top: 3.5rem;
 		padding-top: 1.5rem;
-		border-top: 1px solid var(--line-soft);
+		border-top: 1px solid var(--wa-color-surface-border);
 		width: 100%;
 		max-width: 30rem;
 		text-align: center;
 		font-size: 0.8rem;
 		opacity: 0.5;
 	}
-
-	footer a { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -139,18 +93,18 @@
 	<h1>Smart Switch</h1>
 
 	<p class="lede">
-		A small board that fits behind your existing wall pulse switch. 
-		It reads tap, double-tap, nth-tap or hold and turns each one into a Matter or Zigbee event, 
+		A small board that fits behind your existing wall pulse switch.
+		It reads tap, double-tap, nth-tap or hold and turns each into a Matter or Zigbee event,
 		so it can drive your lights, scenes, brightness or other automations.
 	</p>
 
 	<div class="pills">
-		<span class="pill">Matter or Thread</span>
-		<span class="pill">Tap &amp; hold gestures</span>
-		<span class="pill">Bluetooth configuration</span>
+		<wa-tag variant="neutral" appearance="outlined" pill>Matter or Thread</wa-tag>
+		<wa-tag variant="neutral" appearance="outlined" pill>Tap &amp; hold gestures</wa-tag>
+		<wa-tag variant="neutral" appearance="outlined" pill>Bluetooth configuration</wa-tag>
 	</div>
 
-	<a class="cta" href="./config/">Configure your switch &rarr;</a>
+	<wa-button href="./config/" appearance="filled" variant="success" size="l">Configure your switch &rarr;</wa-button>
 	<p class="cta-note">Requires Chrome or Edge (Web Bluetooth)</p>
 </main>
 
