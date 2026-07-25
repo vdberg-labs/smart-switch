@@ -3,33 +3,131 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Smart Switch Config</title>
+<title>Configure your switch</title>
 <style>
-	body {
-		font-family: system-ui, sans-serif;
-		max-width: 32rem;
-		margin: 2rem auto;
-		padding: 0 1rem;
-		color: #1a1a1a;
+	:root {
+		--ink: #eceee8;
+		--paper: #12100d;
+		--paper-raised: #1b1815;
+		--patina: #7fbba9;
+		--patina-strong: #9ed4c3;
+		--copper: #d98a5e;
+		--line: #3c3a34;
+		--line-soft: #262420;
 	}
-	h1 { font-size: 1.25rem; }
-	fieldset { margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 6px; }
-	legend { font-weight: 600; padding: 0 0.4rem; }
-	label { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 0.5rem 0; }
+
+	* { box-sizing: border-box; }
+
+	body {
+		font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+		max-width: 32rem;
+		margin: 0 auto;
+		padding: 3rem 1.25rem 4rem;
+		background: var(--paper);
+		color: var(--ink);
+	}
+
+	a { color: var(--patina-strong); }
+
+	h1 {
+		font-size: 1.4rem;
+		font-weight: 700;
+		letter-spacing: -0.01em;
+		margin-bottom: 0.5rem;
+	}
+
+	p.lede {
+		color: var(--ink);
+		opacity: 0.7;
+		font-size: 0.92rem;
+		line-height: 1.5;
+		margin-top: 0;
+	}
+
+	fieldset {
+		margin-bottom: 1.1rem;
+		border: 1px solid var(--line);
+		border-radius: 6px;
+		background: var(--paper-raised);
+	}
+
+	legend {
+		font-weight: 600;
+		font-size: 0.85rem;
+		letter-spacing: 0.02em;
+		padding: 0 0.4rem;
+		color: var(--patina-strong);
+	}
+
+	label {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin: 0.6rem 0;
+		font-size: 0.92rem;
+	}
+
 	label span { flex: 1; }
-	input[type="number"] { width: 5rem; }
-	button { padding: 0.5rem 1rem; margin-right: 0.5rem; }
-	#status { margin-top: 1rem; font-size: 0.9rem; white-space: pre-wrap; }
-	.error { color: #b00020; }
-	.ok { color: #1a7a1a; }
-	#form { opacity: 0.4; pointer-events: none; }
+
+	input[type="number"] {
+		width: 5rem;
+		background: var(--paper);
+		color: var(--ink);
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		padding: 0.3rem 0.5rem;
+	}
+
+	input[type="checkbox"] { accent-color: var(--patina-strong); }
+
+	button {
+		font: inherit;
+		font-weight: 600;
+		padding: 0.55rem 1.1rem;
+		margin-right: 0.6rem;
+		border-radius: 6px;
+		border: 1px solid var(--line);
+		background: var(--paper-raised);
+		color: var(--ink);
+		cursor: pointer;
+	}
+
+	button:hover:not(:disabled) { border-color: var(--patina-strong); }
+	button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+	button#connect {
+		background: var(--patina-strong);
+		border-color: var(--patina-strong);
+		color: #0d1512;
+	}
+
+	#status {
+		margin-top: 1.25rem;
+		font-size: 0.88rem;
+		white-space: pre-wrap;
+		opacity: 0.85;
+	}
+
+	.error { color: var(--copper); }
+	.ok { color: var(--patina-strong); }
+
+	#form { opacity: 0.35; pointer-events: none; transition: opacity 0.15s; }
 	#form.enabled { opacity: 1; pointer-events: auto; }
+
+	footer {
+		margin-top: 2.5rem;
+		padding-top: 1.25rem;
+		border-top: 1px solid var(--line-soft);
+		font-size: 0.78rem;
+		opacity: 0.55;
+	}
 </style>
 </head>
 <body>
-<h1>Smart Switch — Gesture Config</h1>
-<p>
-	Hold either switch input for 10 seconds to open the device's BLE config window (5 minutes,
+<h1>Configure your switch</h1>
+<p class="lede">
+	Hold either switch input for 10 seconds to open the device's Bluetooth config window (5 minutes,
 	or until this page disconnects), then click Connect.
 </p>
 <div>
@@ -69,6 +167,8 @@
 </form>
 
 <div id="status"></div>
+
+<footer>Requires Chrome or Edge (Web Bluetooth). <a href="../">&larr; back</a></footer>
 
 <script type="module" src="/src/main.ts"></script>
 </body>
