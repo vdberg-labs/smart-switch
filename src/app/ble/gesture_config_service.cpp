@@ -15,6 +15,35 @@ namespace
 GestureEngine *sEngine;
 const BleConfigMode *sConfigMode;
 
+constexpr char kConfigSchemaJson[] =
+	R"json({"schemaVersion":1,"wireFormatVersion":1,"wireSize":12,)json"
+	R"json("groups":[{"id":"channel","index":0,"label":"Channel 1 (SWITCH1)"},)json"
+	R"json({"id":"channel","index":1,"label":"Channel 2 (SWITCH2)"}],)json"
+	R"json("fields":[)json"
+	R"json({"key":"numChannels","label":"Active channels","type":"u8","offset":1,"size":1,"min":1,"max":2,"control":"select","options":[1,2]},)json"
+	R"json({"key":"pollMs","label":"Poll interval (ms)","type":"u16","offset":2,"size":2,"min":1,"max":50},)json"
+	R"json({"key":"longPressMs","label":"Long-press / hold threshold (ms)","type":"u16","offset":4,"size":2,"min":200,"max":5000},)json"
+	R"json({"key":"multiGapMs","label":"Multi-tap gap (ms)","type":"u16","offset":6,"size":2,"min":50,"max":2000},)json"
+	R"json({"key":"maxTaps","label":"Max taps","type":"u8","offset":8,"size":1,"min":1,"max":5,"group":"channel","groupIndex":0},)json"
+	R"json({"key":"holdEnabled","label":"Hold enabled","type":"bool","offset":9,"size":1,"group":"channel","groupIndex":0},)json"
+	R"json({"key":"maxTaps","label":"Max taps","type":"u8","offset":10,"size":1,"min":1,"max":5,"group":"channel","groupIndex":1},)json"
+	R"json({"key":"holdEnabled","label":"Hold enabled","type":"bool","offset":11,"size":1,"group":"channel","groupIndex":1})json"
+	R"json(]})json";
+
+ssize_t ReadSchema(bt_conn *conn, const bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
+{
+	if (!sConfigMode) {
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
+	if (!sConfigMode->IsActive()) {
+		LOG_WRN("Gesture config schema read rejected: BLE config mode is not active");
+		return BT_GATT_ERR(BT_ATT_ERR_AUTHENTICATION);
+	}
+	/* sizeof(...) - 1 drops the implicit trailing '\0': the transmitted bytes are exactly the
+	 * JSON text, decoded client-side with TextDecoder + JSON.parse. */
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, kConfigSchemaJson, sizeof(kConfigSchemaJson) - 1);
+}
+
 ssize_t ReadConfig(bt_conn *conn, const bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
 {
 	if (!sEngine) {
@@ -66,7 +95,9 @@ BT_GATT_SERVICE_DEFINE(sGestureConfigService, BT_GATT_PRIMARY_SERVICE(BT_UUID_SM
 			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_CONFIG_CHAR,
 						BT_GATT_CHRC_READ | BT_GATT_CHRC_WRITE,
 						BT_GATT_PERM_READ | BT_GATT_PERM_WRITE, ReadConfig, WriteConfig,
-						nullptr), );
+						nullptr),
+			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_CONFIG_SCHEMA_CHAR, BT_GATT_CHRC_READ,
+						BT_GATT_PERM_READ, ReadSchema, nullptr, nullptr), );
 
 void GestureConfigService::Init(GestureEngine &engine, const BleConfigMode &configMode)
 {
