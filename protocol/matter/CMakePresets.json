@@ -1,0 +1,54 @@
+{
+    "version": 2,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 20
+    },
+    "configurePresets": [
+        {
+            "name": "debug_build_without_bl",
+            "displayName": "DEBUG build without bl for rev_1",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/dw",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
+                "BOARD_ROOT": "${sourceDir}/../..",
+                "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch_without_bl.yml",
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "EXTRA_CONF_FILE": "${sourceDir}/prj_debug.conf",
+                "DEBUG_BUILD": true,
+                "USE_BOOTLOADER": false
+            }
+        },
+        {
+            "name": "debug_build",
+            "displayName": "DEBUG build for rev_1",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/db",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
+                "BOARD_ROOT": "${sourceDir}/../..",
+                "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch.yml",
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "EXTRA_CONF_FILE": "${sourceDir}/prj_debug.conf",
+                "DEBUG_BUILD": true,
+                "USE_BOOTLOADER": true
+            }
+        },
+        {
+            "name": "release_build",
+            "displayName": "RELEASE build for rev_1",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/rb",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev1/nrf54l15/cpuapp/ns",
+                "BOARD_ROOT": "${sourceDir}/../..",
+                "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch.yml",
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "EXTRA_CONF_FILE": "${sourceDir}/prj_release.conf",
+                "DEBUG_BUILD": false,
+                "USE_BOOTLOADER": true
+            }
+        }
+    ]
+}

@@ -1,0 +1,34 @@
+#
+# Copyright (c) 2023 Nordic Semiconductor ASA
+#
+# SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
+#
+
+#### Radio core selection
+config NRF_DEFAULT_IPC_RADIO
+	default y
+
+#### Bootloader
+choice BOOTLOADER
+	default BOOTLOADER_MCUBOOT if USE_BOOTLOADER
+endchoice
+
+if BOOTLOADER_MCUBOOT
+
+#### DFU multi-image support
+config DFU_MULTI_IMAGE_PACKAGE_BUILD
+	default y
+
+config DFU_MULTI_IMAGE_PACKAGE_APP
+	default y
+
+config PM_EXTERNAL_FLASH_MCUBOOT_SECONDARY
+	default y
+
+endif # BOOTLOADER_MCUBOOT
+
+#### Enable generating factory data
+config MATTER_FACTORY_DATA_GENERATE
+	default y
+
+source "share/sysbuild/Kconfig"
