@@ -1,7 +1,8 @@
 #pragma once
 
-#include "ble_config_mode.h"
+#include "../gesture/ble_config_state.h"
 #include "../gesture/gesture_engine.h"
+#include "../config/persistent_store.h"
 
 #include <zephyr/bluetooth/uuid.h>
 
@@ -25,13 +26,17 @@ namespace SmartSwitch
 #define BT_UUID_SMART_SWITCH_GESTURE_CONFIG_SCHEMA_CHAR \
 	BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_CONFIG_SCHEMA_CHAR_VAL)
 
-/* Custom GATT service exposing the gesture engine's EngineConfig as a single read/write
- * characteristic (12-byte wire format, see ConfigStore). Statically present in the GATT
- * database; reads/writes are only accepted while BleConfigMode::IsActive() (i.e. while a
- * config-mode advertising window, opened by a 10s hold, is open). */
+/* Custom GATT service exposing the gesture engine's EngineConfig as a read/write characteristic
+ * (12-byte wire format, see ConfigStore) plus a read-only Schema characteristic (JSON) describing
+ * that wire format field-by-field, so a generic web app never needs updating when the firmware's
+ * config fields change. Statically present in the GATT database; reads/writes are only accepted
+ * while configMode.IsActive() (i.e. while a config-mode advertising window, opened by a 10s hold,
+ * is open). Shared between firmwares: only depends on interfaces (GestureEngine is itself
+ * protocol-agnostic; IBleConfigModeState/IPersistentStore are implemented separately per
+ * firmware). */
 class GestureConfigService {
 public:
-	static void Init(GestureEngine &engine, const BleConfigMode &configMode);
+	static void Init(GestureEngine &engine, const IBleConfigModeState &configMode, IPersistentStore &store);
 };
 
 }

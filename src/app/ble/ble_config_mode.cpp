@@ -1,6 +1,6 @@
 #include "ble_config_mode.h"
 
-#include "gesture_config_service.h"
+#include "../../../shared/ble/gesture_config_service.h"
 
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/gap.h>

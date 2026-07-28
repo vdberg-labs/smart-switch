@@ -1,10 +1,6 @@
 #include "config_store.h"
 
-#include <platform/KeyValueStoreManager.h>
-
 #include <zephyr/sys/byteorder.h>
-
-using namespace chip::DeviceLayer::PersistedStorage;
 
 namespace SmartSwitch
 {
@@ -44,12 +40,11 @@ bool ConfigStore::Decode(const uint8_t *in, size_t len, EngineConfig &out)
 	return true;
 }
 
-EngineConfig ConfigStore::Load()
+EngineConfig ConfigStore::Load(IPersistentStore &store)
 {
 	uint8_t buf[kWireSize];
 	size_t readBytes = 0;
-	CHIP_ERROR err = KeyValueStoreMgr().Get(kKvsKey, buf, sizeof(buf), &readBytes);
-	if (err != CHIP_NO_ERROR) {
+	if (!store.Get(kKvsKey, buf, sizeof(buf), readBytes)) {
 		return EngineConfig::Defaults();
 	}
 
@@ -61,15 +56,15 @@ EngineConfig ConfigStore::Load()
 	return cfg;
 }
 
-CHIP_ERROR ConfigStore::Save(const EngineConfig &cfg)
+bool ConfigStore::Save(IPersistentStore &store, const EngineConfig &cfg)
 {
 	if (!cfg.IsValid()) {
-		return CHIP_ERROR_INVALID_ARGUMENT;
+		return false;
 	}
 
 	uint8_t buf[kWireSize];
 	Encode(cfg, buf);
-	return KeyValueStoreMgr().Put(kKvsKey, buf, sizeof(buf));
+	return store.Put(kKvsKey, buf, sizeof(buf));
 }
 
 } /* namespace SmartSwitch */

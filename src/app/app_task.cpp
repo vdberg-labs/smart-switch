@@ -7,10 +7,12 @@
 #include "app_task.h"
 
 #include "ble/ble_config_mode.h"
-#include "ble/gesture_config_service.h"
-#include "config/config_store.h"
-#include "gesture/gesture_engine.h"
+#include "config/matter_persistent_store.h"
 #include "matter/matter_switch_protocol.h"
+
+#include "../../shared/ble/gesture_config_service.h"
+#include "../../shared/config/config_store.h"
+#include "../../shared/gesture/gesture_engine.h"
 
 #include "app/matter_init.h"
 #include "app/task_executor.h"
@@ -40,6 +42,7 @@ Nrf::Matter::IdentifyCluster sIdentifyCluster(kLightEndpointId);
  * by swapping only this one object — the engine is unchanged. */
 SmartSwitch::MatterSwitchProtocol sSwitchProtocol;
 SmartSwitch::BleConfigMode sBleConfigMode;
+SmartSwitch::MatterPersistentStore sPersistentStore;
 SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode);
 } /* namespace */
 
@@ -59,9 +62,9 @@ CHIP_ERROR AppTask::Init()
 	}
 
 	sGestureEngine.Start();
-	sGestureEngine.ApplyConfig(SmartSwitch::ConfigStore::Load());
+	sGestureEngine.ApplyConfig(SmartSwitch::ConfigStore::Load(sPersistentStore));
 	sBleConfigMode.Init();
-	SmartSwitch::GestureConfigService::Init(sGestureEngine, sBleConfigMode);
+	SmartSwitch::GestureConfigService::Init(sGestureEngine, sBleConfigMode, sPersistentStore);
 
 	ReturnErrorOnFailure(Nrf::Matter::RegisterEventHandler(Nrf::Board::DefaultMatterEventHandler, 0));
 

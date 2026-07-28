@@ -1,6 +1,6 @@
 #pragma once
 
-#include "gesture/switch_protocol.h"
+#include "../../../shared/gesture/switch_protocol.h"
 
 #include <app/util/basic-types.h>
 

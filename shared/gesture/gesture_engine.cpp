@@ -1,14 +1,8 @@
-/*
- * Copyright (c) 2022 Nordic Semiconductor ASA
- *
- * SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
- */
-
 #include "gesture_engine.h"
 
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
+LOG_MODULE_DECLARE(app, CONFIG_LOG_DEFAULT_LEVEL);
 
 namespace SmartSwitch
 {

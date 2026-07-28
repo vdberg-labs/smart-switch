@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../gesture/config_mode_trigger.h"
+#include "../../../shared/gesture/ble_config_state.h"
+#include "../../../shared/gesture/config_mode_trigger.h"
 
 #include <platform/Zephyr/BLEAdvertisingArbiter.h>
 
@@ -16,7 +17,7 @@ namespace SmartSwitch
  * database but is unreachable since the device isn't connectable for it. Advertising is
  * coordinated through Matter's existing BLEAdvertisingArbiter so it can't collide with Matter's
  * own CHIPoBLE commissioning advertising (which always wins arbitration). */
-class BleConfigMode : public IConfigModeTrigger {
+class BleConfigMode : public IConfigModeTrigger, public IBleConfigModeState {
 public:
 	/* Registers the connection callbacks used to end the window early on disconnect. Call once
 	 * from AppTask::Init(), after Nrf::Matter::PrepareServer() (which initializes the BLE
@@ -25,7 +26,7 @@ public:
 
 	void OnConfigModeRequested() override;
 
-	bool IsActive() const { return mActive; }
+	bool IsActive() const override { return mActive; }
 
 private:
 	static constexpr uint32_t kConfigWindowMs = 5 * 60 * 1000; /* 5 minutes */

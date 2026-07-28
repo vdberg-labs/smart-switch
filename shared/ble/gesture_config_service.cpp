@@ -6,14 +6,15 @@
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/logging/log.h>
 
-LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
+LOG_MODULE_DECLARE(app, CONFIG_LOG_DEFAULT_LEVEL);
 
 namespace SmartSwitch
 {
 namespace
 {
 GestureEngine *sEngine;
-const BleConfigMode *sConfigMode;
+const IBleConfigModeState *sConfigMode;
+IPersistentStore *sStore;
 
 constexpr char kConfigSchemaJson[] =
 	R"json({"schemaVersion":1,"wireFormatVersion":1,"wireSize":12,)json"
@@ -61,7 +62,7 @@ ssize_t ReadConfig(bt_conn *conn, const bt_gatt_attr *attr, void *buf, uint16_t 
 ssize_t WriteConfig(bt_conn *conn, const bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset,
 		     uint8_t flags)
 {
-	if (!sEngine || !sConfigMode) {
+	if (!sEngine || !sConfigMode || !sStore) {
 		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 	}
 	if (offset != 0) {
@@ -81,7 +82,7 @@ ssize_t WriteConfig(bt_conn *conn, const bt_gatt_attr *attr, const void *buf, ui
 		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
 	}
 
-	if (ConfigStore::Save(cfg) != CHIP_NO_ERROR) {
+	if (!ConfigStore::Save(*sStore, cfg)) {
 		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 	}
 	sEngine->ApplyConfig(cfg);
@@ -99,10 +100,11 @@ BT_GATT_SERVICE_DEFINE(sGestureConfigService, BT_GATT_PRIMARY_SERVICE(BT_UUID_SM
 			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_CONFIG_SCHEMA_CHAR, BT_GATT_CHRC_READ,
 						BT_GATT_PERM_READ, ReadSchema, nullptr, nullptr), );
 
-void GestureConfigService::Init(GestureEngine &engine, const BleConfigMode &configMode)
+void GestureConfigService::Init(GestureEngine &engine, const IBleConfigModeState &configMode, IPersistentStore &store)
 {
 	sEngine = &engine;
 	sConfigMode = &configMode;
+	sStore = &store;
 }
 
 } /* namespace SmartSwitch */
