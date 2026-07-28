@@ -5,14 +5,17 @@
 #
 mainmenu "Smart Switch — Matter Firmware"
 
+# Full Thread Device (Router-eligible), not Minimal Thread Device: this is a mains-powered,
+# always-on wall switch, so it's a good candidate to route packets for battery-powered devices
+# elsewhere in the mesh.
 if OPENTHREAD
 
 choice OPENTHREAD_NORDIC_LIBRARY_CONFIGURATION
-	default OPENTHREAD_NORDIC_LIBRARY_MTD
+	default OPENTHREAD_NORDIC_LIBRARY_FTD
 endchoice
 
 choice OPENTHREAD_DEVICE_TYPE
-	default OPENTHREAD_MTD
+	default OPENTHREAD_FTD
 endchoice
 
 endif # OPENTHREAD
