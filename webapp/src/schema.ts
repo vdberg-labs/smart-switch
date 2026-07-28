@@ -1,10 +1,3 @@
-/* Generic decoder for the device's self-described config protocol. The device's Schema
- * characteristic (see src/app/ble/gesture_config_service.cpp, kConfigSchemaJson) returns a JSON
- * document describing every field in the Config characteristic's binary wire format — key,
- * label, type, byte offset/size, valid range, and optional grouping (e.g. "channel 0",
- * "channel 1"). This file never needs updating when firmware's config fields change; only the
- * device's own schema does. */
-
 export interface ConfigGroup {
 	id: string;
 	index: number;
@@ -35,8 +28,6 @@ export interface ConfigSchema {
 
 export type ConfigValues = Record<string, number | boolean>;
 
-/** Unique per-value key: grouped fields are disambiguated by group + index (e.g. "channel.0.maxTaps"),
- * ungrouped fields just use their own key (e.g. "pollMs"). */
 export function fieldValueKey(f: ConfigField): string {
 	return f.group !== undefined ? `${f.group}.${f.groupIndex}.${f.key}` : f.key;
 }
@@ -98,8 +89,6 @@ export function encodeValues(schema: ConfigSchema, values: ConfigValues): Uint8A
 	return buf;
 }
 
-/** Early client-side validation only — the device's own EngineConfig::IsValid() (firmware side)
- * remains the authoritative check and will reject an out-of-range write regardless. */
 export function isValid(schema: ConfigSchema, values: ConfigValues): boolean {
 	return schema.fields.every((field) => {
 		const value = values[fieldValueKey(field)];

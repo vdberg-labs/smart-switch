@@ -1,7 +1,10 @@
 #pragma once
 
 #include "../gesture/ble_config_state.h"
+#include "../gesture/commissioning_info_provider.h"
+#include "../gesture/factory_reset_trigger.h"
 #include "../gesture/gesture_engine.h"
+#include "../gesture/network_removal_trigger.h"
 #include "../config/persistent_store.h"
 
 #include <zephyr/bluetooth/uuid.h>
@@ -21,22 +24,40 @@ namespace SmartSwitch
 #define SMART_SWITCH_UUID_GESTURE_CONFIG_SCHEMA_CHAR_VAL \
 	BT_UUID_128_ENCODE(0xfbdce744, 0x27cf, 0x46c3, 0xa21b, 0x84953dcd14da)
 
+/* 5c2e63e4-79eb-4ced-97ed-dd6a9a24e6ae */
+#define SMART_SWITCH_UUID_GESTURE_FACTORY_RESET_CHAR_VAL \
+	BT_UUID_128_ENCODE(0x5c2e63e4, 0x79eb, 0x4ced, 0x97ed, 0xdd6a9a24e6ae)
+
+/* ab3b9901-764a-446d-9599-8d11881b5da6 */
+#define SMART_SWITCH_UUID_GESTURE_COMMISSIONING_CHAR_VAL \
+	BT_UUID_128_ENCODE(0xab3b9901, 0x764a, 0x446d, 0x9599, 0x8d11881b5da6)
+
+/* f777448c-d9e9-4c3f-8e49-c2bdaf51bfdd */
+#define SMART_SWITCH_UUID_GESTURE_LOG_CHAR_VAL \
+	BT_UUID_128_ENCODE(0xf777448c, 0xd9e9, 0x4c3f, 0x8e49, 0xc2bdaf51bfdd)
+
+/* b4db24a8-5f61-49b2-8f9e-486ae8b83de2 */
+#define SMART_SWITCH_UUID_GESTURE_REMOVE_NETWORK_CHAR_VAL \
+	BT_UUID_128_ENCODE(0xb4db24a8, 0x5f61, 0x49b2, 0x8f9e, 0x486ae8b83de2)
+
 #define BT_UUID_SMART_SWITCH_GESTURE_CONFIG_SERVICE BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_CONFIG_SERVICE_VAL)
 #define BT_UUID_SMART_SWITCH_GESTURE_CONFIG_CHAR BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_CONFIG_CHAR_VAL)
 #define BT_UUID_SMART_SWITCH_GESTURE_CONFIG_SCHEMA_CHAR \
 	BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_CONFIG_SCHEMA_CHAR_VAL)
+#define BT_UUID_SMART_SWITCH_GESTURE_FACTORY_RESET_CHAR \
+	BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_FACTORY_RESET_CHAR_VAL)
+#define BT_UUID_SMART_SWITCH_GESTURE_COMMISSIONING_CHAR \
+	BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_COMMISSIONING_CHAR_VAL)
+#define BT_UUID_SMART_SWITCH_GESTURE_LOG_CHAR \
+	BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_LOG_CHAR_VAL)
+#define BT_UUID_SMART_SWITCH_GESTURE_REMOVE_NETWORK_CHAR \
+	BT_UUID_DECLARE_128(SMART_SWITCH_UUID_GESTURE_REMOVE_NETWORK_CHAR_VAL)
 
-/* Custom GATT service exposing the gesture engine's EngineConfig as a read/write characteristic
- * (12-byte wire format, see ConfigStore) plus a read-only Schema characteristic (JSON) describing
- * that wire format field-by-field, so a generic web app never needs updating when the firmware's
- * config fields change. Statically present in the GATT database; reads/writes are only accepted
- * while configMode.IsActive() (i.e. while a config-mode advertising window, opened by a 10s hold,
- * is open). Shared between firmwares: only depends on interfaces (GestureEngine is itself
- * protocol-agnostic; IBleConfigModeState/IPersistentStore are implemented separately per
- * firmware). */
 class GestureConfigService {
 public:
-	static void Init(GestureEngine &engine, const IBleConfigModeState &configMode, IPersistentStore &store);
+	static void Init(GestureEngine &engine, IBleConfigModeState &configMode, IPersistentStore &store,
+			  IFactoryResetTrigger &factoryReset, ICommissioningInfoProvider &commissioningInfo,
+			  INetworkRemovalTrigger &networkRemoval);
 };
 
 }

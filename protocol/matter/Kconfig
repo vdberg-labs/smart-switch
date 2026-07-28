@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
-mainmenu "Smart Switch — Matter Firmware"
+mainmenu "Smart Switch Matter Firmware"
 
 # Full Thread Device (Router-eligible), not Minimal Thread Device: this is a mains-powered,
 # always-on wall switch, so it's a good candidate to route packets for battery-powered devices

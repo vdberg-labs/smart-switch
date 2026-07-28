@@ -1,6 +1,7 @@
 #include "gesture_config_service.h"
 
 #include "../config/config_store.h"
+#include "../diag/device_log.h"
 
 #include <zephyr/bluetooth/att.h>
 #include <zephyr/bluetooth/gatt.h>
@@ -13,8 +14,14 @@ namespace SmartSwitch
 namespace
 {
 GestureEngine *sEngine;
-const IBleConfigModeState *sConfigMode;
+IBleConfigModeState *sConfigMode;
 IPersistentStore *sStore;
+IFactoryResetTrigger *sFactoryReset;
+ICommissioningInfoProvider *sCommissioningInfo;
+INetworkRemovalTrigger *sNetworkRemoval;
+
+constexpr uint8_t kFactoryResetMagic = 0xF5;
+constexpr uint8_t kNetworkRemovalMagic = 0xF6;
 
 constexpr char kConfigSchemaJson[] =
 	R"json({"schemaVersion":1,"wireFormatVersion":1,"wireSize":12,)json"
@@ -40,17 +47,12 @@ ssize_t ReadSchema(bt_conn *conn, const bt_gatt_attr *attr, void *buf, uint16_t 
 		LOG_WRN("Gesture config schema read rejected: BLE config mode is not active");
 		return BT_GATT_ERR(BT_ATT_ERR_AUTHENTICATION);
 	}
-	/* sizeof(...) - 1 drops the implicit trailing '\0': the transmitted bytes are exactly the
-	 * JSON text, decoded client-side with TextDecoder + JSON.parse. */
 	return bt_gatt_attr_read(conn, attr, buf, len, offset, kConfigSchemaJson, sizeof(kConfigSchemaJson) - 1);
 }
 
 ssize_t ReadConfig(bt_conn *conn, const bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
 {
 	if (!sEngine) {
-		/* The GATT service is statically registered at boot, before GestureConfigService::Init()
-		 * runs from AppTask::Init(); this should be unreachable in practice (nothing is
-		 * advertising this early), but fail safe rather than dereferencing null. */
 		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
 	}
 
@@ -90,6 +92,97 @@ ssize_t WriteConfig(bt_conn *conn, const bt_gatt_attr *attr, const void *buf, ui
 	return len;
 }
 
+ssize_t WriteFactoryReset(bt_conn *conn, const bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset,
+			   uint8_t flags)
+{
+	if (!sConfigMode || !sFactoryReset) {
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
+	if (offset != 0) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
+	}
+	if (len != 1) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
+	}
+	if (!sConfigMode->IsActive()) {
+		LOG_WRN("Factory reset rejected: BLE config mode is not active");
+		return BT_GATT_ERR(BT_ATT_ERR_AUTHENTICATION);
+	}
+	if (static_cast<const uint8_t *>(buf)[0] != kFactoryResetMagic) {
+		LOG_WRN("Factory reset rejected: wrong confirmation value");
+		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+	}
+
+	LOG_INF("Factory reset requested over BLE");
+	sFactoryReset->OnFactoryResetRequested();
+
+	return len;
+}
+
+ssize_t WriteRemoveNetwork(bt_conn *conn, const bt_gatt_attr *attr, const void *buf, uint16_t len, uint16_t offset,
+			    uint8_t flags)
+{
+	if (!sConfigMode || !sNetworkRemoval) {
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
+	if (offset != 0) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_OFFSET);
+	}
+	if (len != 1) {
+		return BT_GATT_ERR(BT_ATT_ERR_INVALID_ATTRIBUTE_LEN);
+	}
+	if (!sConfigMode->IsActive()) {
+		LOG_WRN("Remove-from-network rejected: BLE config mode is not active");
+		return BT_GATT_ERR(BT_ATT_ERR_AUTHENTICATION);
+	}
+	if (static_cast<const uint8_t *>(buf)[0] != kNetworkRemovalMagic) {
+		LOG_WRN("Remove-from-network rejected: wrong confirmation value");
+		return BT_GATT_ERR(BT_ATT_ERR_VALUE_NOT_ALLOWED);
+	}
+
+	LOG_INF("Remove-from-network requested over BLE");
+	sNetworkRemoval->OnNetworkRemovalRequested();
+
+	return len;
+}
+
+ssize_t ReadCommissioningInfo(bt_conn *conn, const bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
+{
+	if (!sConfigMode || !sCommissioningInfo) {
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
+	if (!sConfigMode->IsActive()) {
+		LOG_WRN("Commissioning info read rejected: BLE config mode is not active");
+		return BT_GATT_ERR(BT_ATT_ERR_AUTHENTICATION);
+	}
+
+	char json[192];
+	size_t jsonLen = 0;
+	if (!sCommissioningInfo->GetCommissioningInfoJson(json, sizeof(json), jsonLen)) {
+		LOG_ERR("Failed to build commissioning info JSON");
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
+
+	sConfigMode->SuppressResumeOnDisconnect();
+
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, json, jsonLen);
+}
+
+ssize_t ReadLog(bt_conn *conn, const bt_gatt_attr *attr, void *buf, uint16_t len, uint16_t offset)
+{
+	if (!sConfigMode) {
+		return BT_GATT_ERR(BT_ATT_ERR_UNLIKELY);
+	}
+	if (!sConfigMode->IsActive()) {
+		LOG_WRN("Device log read rejected: BLE config mode is not active");
+		return BT_GATT_ERR(BT_ATT_ERR_AUTHENTICATION);
+	}
+
+	size_t snapshotLen = 0;
+	const char *snapshot = DeviceLog::Snapshot(snapshotLen);
+	return bt_gatt_attr_read(conn, attr, buf, len, offset, snapshot, snapshotLen);
+}
+
 } /* namespace */
 
 BT_GATT_SERVICE_DEFINE(sGestureConfigService, BT_GATT_PRIMARY_SERVICE(BT_UUID_SMART_SWITCH_GESTURE_CONFIG_SERVICE),
@@ -98,13 +191,26 @@ BT_GATT_SERVICE_DEFINE(sGestureConfigService, BT_GATT_PRIMARY_SERVICE(BT_UUID_SM
 						BT_GATT_PERM_READ | BT_GATT_PERM_WRITE, ReadConfig, WriteConfig,
 						nullptr),
 			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_CONFIG_SCHEMA_CHAR, BT_GATT_CHRC_READ,
-						BT_GATT_PERM_READ, ReadSchema, nullptr, nullptr), );
+						BT_GATT_PERM_READ, ReadSchema, nullptr, nullptr),
+			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_FACTORY_RESET_CHAR, BT_GATT_CHRC_WRITE,
+						BT_GATT_PERM_WRITE, nullptr, WriteFactoryReset, nullptr),
+			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_COMMISSIONING_CHAR, BT_GATT_CHRC_READ,
+						BT_GATT_PERM_READ, ReadCommissioningInfo, nullptr, nullptr),
+			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_LOG_CHAR, BT_GATT_CHRC_READ,
+						BT_GATT_PERM_READ, ReadLog, nullptr, nullptr),
+			BT_GATT_CHARACTERISTIC(BT_UUID_SMART_SWITCH_GESTURE_REMOVE_NETWORK_CHAR, BT_GATT_CHRC_WRITE,
+						BT_GATT_PERM_WRITE, nullptr, WriteRemoveNetwork, nullptr), );
 
-void GestureConfigService::Init(GestureEngine &engine, const IBleConfigModeState &configMode, IPersistentStore &store)
+void GestureConfigService::Init(GestureEngine &engine, IBleConfigModeState &configMode, IPersistentStore &store,
+				 IFactoryResetTrigger &factoryReset, ICommissioningInfoProvider &commissioningInfo,
+				 INetworkRemovalTrigger &networkRemoval)
 {
 	sEngine = &engine;
 	sConfigMode = &configMode;
 	sStore = &store;
+	sFactoryReset = &factoryReset;
+	sCommissioningInfo = &commissioningInfo;
+	sNetworkRemoval = &networkRemoval;
 }
 
 } /* namespace SmartSwitch */

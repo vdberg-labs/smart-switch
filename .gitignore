@@ -7,7 +7,6 @@
 /protocol/matter/dw/
 /protocol/matter/db/
 /protocol/matter/rb/
-# stale build output at the old (pre-restructure) location — safe to delete manually
 /dw/
 /db/
 /rb/

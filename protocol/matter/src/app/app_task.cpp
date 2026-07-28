@@ -8,6 +8,10 @@
 
 #include "ble/ble_config_mode.h"
 #include "config/matter_persistent_store.h"
+#include "matter/matter_commissioning_info.h"
+#include "matter/matter_fabric_delegate.h"
+#include "matter/matter_factory_reset.h"
+#include "matter/matter_network_removal.h"
 #include "matter/matter_switch_protocol.h"
 
 #include "shared/ble/gesture_config_service.h"
@@ -19,6 +23,7 @@
 #include "board/board.h"
 #include "clusters/identify.h"
 
+#include <app/server/Server.h>
 #include <setup_payload/OnboardingCodesUtil.h>
 
 #include <zephyr/logging/log.h>
@@ -37,12 +42,13 @@ constexpr EndpointId kLightEndpointId = 1;
 
 Nrf::Matter::IdentifyCluster sIdentifyCluster(kLightEndpointId);
 
-/* The gesture engine (protocol-agnostic) reports gestures to a communication backend through the
- * ISwitchProtocol interface. Today that backend is Matter (Generic Switch); a Zigbee backend slots in
- * by swapping only this one object — the engine is unchanged. */
 SmartSwitch::MatterSwitchProtocol sSwitchProtocol;
 SmartSwitch::BleConfigMode sBleConfigMode;
 SmartSwitch::MatterPersistentStore sPersistentStore;
+SmartSwitch::MatterFactoryReset sFactoryReset;
+SmartSwitch::MatterCommissioningInfo sCommissioningInfo;
+SmartSwitch::MatterNetworkRemoval sNetworkRemoval;
+SmartSwitch::MatterFabricDelegate sFabricDelegate;
 SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode);
 } /* namespace */
 
@@ -64,7 +70,9 @@ CHIP_ERROR AppTask::Init()
 	sGestureEngine.Start();
 	sGestureEngine.ApplyConfig(SmartSwitch::ConfigStore::Load(sPersistentStore));
 	sBleConfigMode.Init();
-	SmartSwitch::GestureConfigService::Init(sGestureEngine, sBleConfigMode, sPersistentStore);
+	SmartSwitch::GestureConfigService::Init(sGestureEngine, sBleConfigMode, sPersistentStore, sFactoryReset,
+						 sCommissioningInfo, sNetworkRemoval);
+	chip::Server::GetInstance().GetFabricTable().AddFabricDelegate(&sFabricDelegate);
 
 	ReturnErrorOnFailure(Nrf::Matter::RegisterEventHandler(Nrf::Board::DefaultMatterEventHandler, 0));
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Configure your switch</title>
+<title>Manage your switch</title>
 <style>
 	:where(:root), .wa-dark {
 		--wa-color-surface-default: #12100d;
@@ -44,15 +44,26 @@
 		margin-bottom: 1.25rem;
 	}
 
-	#form {
+	#status:empty { display: none; }
+	#status { margin: 1.25rem 0; }
+
+	.tabs {
 		display: flex;
-		flex-direction: column;
-		gap: 1rem;
+		gap: 0.5rem;
+		margin-bottom: 1.25rem;
 		opacity: 0.35;
 		pointer-events: none;
 		transition: opacity 0.15s;
 	}
-	#form.enabled { opacity: 1; pointer-events: auto; }
+	.tabs.enabled { opacity: 1; pointer-events: auto; }
+
+	section[hidden] { display: none; }
+
+	#form {
+		display: flex;
+		flex-direction: column;
+		gap: 1rem;
+	}
 
 	wa-card { display: block; }
 	wa-card::part(body) { display: flex; flex-direction: column; gap: 0.85rem; }
@@ -60,8 +71,88 @@
 
 	.field-row { display: flex; align-items: center; }
 
-	#status:empty { display: none; }
-	#status { margin-top: 1.25rem; }
+	#commission-loading { opacity: 0.6; font-size: 0.9rem; }
+
+	#commission-ready {
+		display: none;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+		text-align: center;
+	}
+	#commission-ready.enabled { display: flex; }
+
+	#qr-canvas {
+		border-radius: 0.5rem;
+		background: #fff;
+		padding: 0.75rem;
+	}
+
+	.code-row { width: 100%; }
+
+	.code-row .label {
+		font-size: 0.78rem;
+		opacity: 0.6;
+		margin-bottom: 0.25rem;
+	}
+
+	.code-row .value {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 1rem;
+		background: var(--wa-color-surface-raised);
+		border: 1px solid var(--wa-color-surface-border);
+		border-radius: 0.4rem;
+		padding: 0.5rem 0.7rem;
+		user-select: all;
+		word-break: break-all;
+	}
+
+	#commission-blocked {
+		display: none;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+	#commission-blocked.enabled { display: flex; }
+	#commission-blocked p { font-size: 0.9rem; opacity: 0.8; margin: 0; }
+
+	.section-intro {
+		font-size: 0.85rem;
+		opacity: 0.7;
+		margin: 0 0 0.85rem;
+	}
+
+	#log-output {
+		display: none;
+		margin-top: 0.75rem;
+		max-height: 16rem;
+		overflow: auto;
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 0.78rem;
+		white-space: pre-wrap;
+		word-break: break-word;
+		background: var(--wa-color-surface-raised);
+		border: 1px solid var(--wa-color-surface-border);
+		border-radius: 0.4rem;
+		padding: 0.6rem 0.75rem;
+	}
+	#log-output.enabled { display: block; }
+
+	.status-line {
+		font-size: 0.85rem;
+		margin: 0 0 0.85rem;
+		display: flex;
+		align-items: center;
+		gap: 0.4rem;
+	}
+	.status-dot {
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 50%;
+		background: var(--wa-color-surface-border);
+		flex: none;
+	}
+	.status-dot.commissioned { background: #7fbba9; }
+	.status-dot.uncommissioned { background: #d98a5e; }
 
 	footer {
 		margin-top: 2.5rem;
@@ -73,20 +164,79 @@
 </style>
 </head>
 <body>
-<h1>Configure your switch</h1>
+<h1>Manage your switch</h1>
 <p class="lede">
-	Hold either switch input for 10 seconds to open the device's Bluetooth config window (5 minutes,
-	or until this page disconnects), then click Connect.
+	Hold either switch input for 10 seconds to open the device's Bluetooth window (5 minutes), then
+	click Connect.
 </p>
 
 <div class="actions">
 	<wa-button id="connect" variant="success" appearance="filled">Connect</wa-button>
-	<wa-button id="save" disabled>Save to device</wa-button>
 </div>
 
-<div id="form"></div>
-
 <div id="status"></div>
+
+<div class="tabs" id="tabs">
+	<wa-button id="tab-config" size="small" variant="brand">Config</wa-button>
+	<wa-button id="tab-network" size="small" variant="neutral">Network</wa-button>
+	<wa-button id="tab-logs" size="small" variant="neutral">Logs</wa-button>
+	<wa-button id="tab-reset" size="small" variant="neutral">Reset</wa-button>
+</div>
+
+<section id="section-config">
+	<div id="form"></div>
+	<div class="actions">
+		<wa-button id="save" disabled>Save to device</wa-button>
+	</div>
+</section>
+
+<section id="section-network" hidden>
+	<p id="commission-loading" class="section-intro">Reading device state&hellip;</p>
+
+	<div id="commission-ready">
+		<div class="status-line">
+			<span class="status-dot uncommissioned"></span> Not commissioned — ready to pair
+		</div>
+		<canvas id="qr-canvas"></canvas>
+
+		<div class="code-row">
+			<div class="label">Manual pairing code</div>
+			<div class="value" id="manual-code"></div>
+		</div>
+
+		<div class="code-row">
+			<div class="label">Raw QR payload</div>
+			<div class="value" id="qr-text"></div>
+		</div>
+
+		<wa-button id="disconnect-to-commission" variant="success">
+			Ready, disconnect so my controller can commission it
+		</wa-button>
+	</div>
+
+	<div id="commission-blocked">
+		<div class="status-line">
+			<span class="status-dot commissioned"></span> Commissioned to a Matter network
+		</div>
+		<p>To commission this device onto a different controller, remove it from its current
+		network first, or use Factory reset in the Reset tab for a full reset.
+		Either will reboot the device; reconnect afterward to see its commissioning code here.</p>
+		<wa-button id="remove-network" variant="danger" appearance="outlined">Remove from network</wa-button>
+	</div>
+</section>
+
+<section id="section-logs" hidden>
+	<p class="section-intro">Read the device's retained log.</p>
+	<wa-button id="read-log" disabled>Read log</wa-button>
+	<pre id="log-output"></pre>
+</section>
+
+<section id="section-reset" hidden>
+	<p class="section-intro">Factory reset removes this device from its current network <strong>and
+	resets gesture settings to defaults</strong>. For just switching networks, use "Remove from
+	network" in the Network tab instead.</p>
+	<wa-button id="factory-reset" variant="danger" disabled>Factory reset</wa-button>
+</section>
 
 <footer>Requires Chrome or Edge (Web Bluetooth). <a href="../">&larr; back</a></footer>
 
