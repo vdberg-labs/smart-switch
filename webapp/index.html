@@ -153,6 +153,7 @@
 	}
 	.status-dot.commissioned { background: #7fbba9; }
 	.status-dot.uncommissioned { background: #d98a5e; }
+	.status-dot.unsupported { background: #8a8a8a; }
 
 	footer {
 		margin-top: 2.5rem;
@@ -216,11 +217,12 @@
 
 	<div id="commission-blocked">
 		<div class="status-line">
-			<span class="status-dot commissioned"></span> Commissioned to a Matter network
+			<span class="status-dot" id="commission-status-dot"></span> <span id="commission-status-text">Commissioned to a Matter network</span>
 		</div>
-		<p>To commission this device onto a different controller, remove it from its current
+		<p id="commission-blocked-desc">To commission this device onto a different controller, remove it from its current
 		network first, or use Factory reset in the Reset tab for a full reset.
 		Either will reboot the device; reconnect afterward to see its commissioning code here.</p>
+		<div id="network-info-rows"></div>
 		<wa-button id="remove-network" variant="danger" appearance="outlined">Remove from network</wa-button>
 	</div>
 </section>

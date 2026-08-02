@@ -59,6 +59,10 @@ const sectionReset = document.getElementById("section-reset") as HTMLElement;
 const commissionLoadingEl = document.getElementById("commission-loading") as HTMLParagraphElement;
 const commissionReadyEl = document.getElementById("commission-ready") as HTMLDivElement;
 const commissionBlockedEl = document.getElementById("commission-blocked") as HTMLDivElement;
+const commissionStatusDotEl = document.getElementById("commission-status-dot") as HTMLSpanElement;
+const commissionStatusTextEl = document.getElementById("commission-status-text") as HTMLSpanElement;
+const commissionBlockedDescEl = document.getElementById("commission-blocked-desc") as HTMLParagraphElement;
+const networkInfoRowsEl = document.getElementById("network-info-rows") as HTMLDivElement;
 const qrCanvas = document.getElementById("qr-canvas") as HTMLCanvasElement;
 const manualCodeEl = document.getElementById("manual-code") as HTMLDivElement;
 const qrTextEl = document.getElementById("qr-text") as HTMLDivElement;
@@ -177,6 +181,41 @@ function writeForm(s: ConfigSchema, values: ConfigValues): void {
 	}
 }
 
+function renderNetworkInfoRows(raw: unknown): void {
+	networkInfoRowsEl.replaceChildren();
+	if (typeof raw !== "object" || raw === null || !("joined" in raw)) {
+		return;
+	}
+
+	const info = raw as Record<string, unknown>;
+	const rows: Array<[string, string]> = [
+		["Joined", info.joined ? "Yes" : "No"],
+		["Role", String(info.role ?? "?")],
+	];
+	if (info.joined) {
+		rows.push(
+			["PAN ID", `0x${Number(info.panId).toString(16)}`],
+			["Extended PAN ID", String(info.extendedPanId ?? "?")],
+			["Channel", String(info.channel ?? "?")],
+			["Short address", `0x${Number(info.shortAddress).toString(16)}`],
+			["IEEE address", String(info.ieeeAddress ?? "?")],
+		);
+	}
+
+	for (const [label, value] of rows) {
+		const row = document.createElement("div");
+		row.className = "code-row";
+		const labelEl = document.createElement("div");
+		labelEl.className = "label";
+		labelEl.textContent = label;
+		const valueEl = document.createElement("div");
+		valueEl.className = "value";
+		valueEl.textContent = value;
+		row.append(labelEl, valueEl);
+		networkInfoRowsEl.append(row);
+	}
+}
+
 function parseCommissioningInfo(json: string): CommissioningInfo {
 	const parsed: unknown = JSON.parse(json);
 	if (
@@ -221,14 +260,33 @@ async function loadCommissionTab(): Promise<void> {
 
 	try {
 		const value = await commissioningChar.readValue();
-		const info = parseCommissioningInfo(new TextDecoder().decode(value));
-		if (info.protocol !== "matter") {
-			throw new Error(`Unsupported protocol from device: ${info.protocol}`);
-		}
+		const text = new TextDecoder().decode(value);
+		const raw: unknown = JSON.parse(text);
+		const protocol = typeof raw === "object" && raw !== null ? (raw as { protocol?: unknown }).protocol : undefined;
 
 		commissionLoadingEl.style.display = "none";
 
+		if (protocol !== "matter") {
+			commissionStatusDotEl.className = "status-dot unsupported";
+			commissionStatusTextEl.textContent = `Network commissioning info not supported for this device's protocol (${String(protocol ?? "unknown")})`;
+			commissionBlockedDescEl.textContent =
+				"This device doesn't expose a QR/manual pairing code over BLE for its protocol, but you can still remove it from its current network below.";
+			renderNetworkInfoRows(raw);
+			commissionBlockedEl.classList.add("enabled");
+			removeNetworkBtn.disabled = !removeNetworkChar;
+			return;
+		}
+
+		networkInfoRowsEl.replaceChildren();
+		const info = parseCommissioningInfo(text);
+
 		if (info.commissioned) {
+			commissionStatusDotEl.className = "status-dot commissioned";
+			commissionStatusTextEl.textContent = "Commissioned to a Matter network";
+			commissionBlockedDescEl.textContent =
+				"To commission this device onto a different controller, remove it from its current " +
+				"network first, or use Factory reset in the Reset tab for a full reset. Either will reboot " +
+				"the device; reconnect afterward to see its commissioning code here.";
 			commissionBlockedEl.classList.add("enabled");
 			removeNetworkBtn.disabled = !removeNetworkChar;
 		} else {
@@ -274,6 +332,7 @@ async function connect(): Promise<void> {
 			logOutputEl.textContent = "";
 			commissionReadyEl.classList.remove("enabled");
 			commissionBlockedEl.classList.remove("enabled");
+			networkInfoRowsEl.replaceChildren();
 			showTab("config");
 
 			if (disconnectingIntentionally) {
@@ -353,9 +412,9 @@ async function factoryReset(): Promise<void> {
 
 	const confirmed = confirm(
 		"Factory reset this device?\n\n" +
-			"It will leave its current Matter network immediately, reset gesture settings to " +
-			"defaults, and will need to be re-commissioned (e.g. via Home Assistant or chip-tool) " +
-			"before it can be used again. This page will disconnect. This cannot be undone.",
+			"It will leave its current network immediately, reset gesture settings to " +
+			"defaults, and will need to be re-commissioned before it can be used again. " +
+			"This page will disconnect. This cannot be undone.",
 	);
 	if (!confirmed) {
 		return;
@@ -376,7 +435,7 @@ async function removeNetwork(): Promise<void> {
 	}
 
 	const confirmed = confirm(
-		"Remove this device from its current Matter network?\n\n" +
+		"Remove this device from its current network?\n\n" +
 			"It will leave its current network and reboot, ready to be commissioned onto a different " +
 			"controller. Unlike factory reset, gesture settings are kept. This page will disconnect.",
 	);
