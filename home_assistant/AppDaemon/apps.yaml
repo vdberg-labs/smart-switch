@@ -1,0 +1,7 @@
+light_control_matter:
+  module: LightControl
+  class: LightControl
+
+light_control_zigbee:
+  module: LightControl
+  class: LightControl
