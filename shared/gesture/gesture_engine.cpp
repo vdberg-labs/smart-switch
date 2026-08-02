@@ -42,7 +42,7 @@ int GestureEngine::Start()
 	k_work_init_delayable(&mWork, WorkHandler);
 	k_work_init(&mApplyWork, ApplyWorkHandler);
 	k_work_reschedule(&mWork, K_MSEC(mPollMs));
-	LOG_INF("Gesture engine started: SWITCH1=P1.01/C9, SWITCH2=P2.04/K9");
+	LOG_INF("Gesture engine started: SWITCH1=P2.04/K9, SWITCH2=P1.01/C9");
 	return 0;
 }
 
