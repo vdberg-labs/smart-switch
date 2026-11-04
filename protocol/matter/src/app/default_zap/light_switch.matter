@@ -2387,3 +2387,54 @@ endpoint 2 {
     ram      attribute clusterRevision default = 2;
   }
 }
+
+cluster GestureConfig = 4294048769 {
+  revision 1; // NOTE: Default/not specifically set
+
+  readonly attribute command_id generatedCommandList[] = 65528;
+  readonly attribute command_id acceptedCommandList[] = 65529;
+  readonly attribute attrib_id attributeList[] = 65531;
+  readonly attribute bitmap32 featureMap = 65532;
+  readonly attribute int16u clusterRevision = 65533;
+  attribute int8u numChannels = 4293984256;
+  attribute int16u pollMs = 4293984257;
+  attribute int16u longPressMs = 4293984258;
+  attribute int16u multiGapMs = 4293984259;
+  attribute int8u ch1MaxTaps = 4293984260;
+  attribute boolean ch1HoldEnabled = 4293984261;
+  attribute int8u ch2MaxTaps = 4293984262;
+  attribute boolean ch2HoldEnabled = 4293984263;
+}
+
+endpoint 3 {
+  device type gesture_config = 4294048770, version 1;
+
+
+  server cluster Descriptor {
+    callback attribute deviceTypeList;
+    callback attribute serverList;
+    callback attribute clientList;
+    callback attribute partsList;
+    callback attribute generatedCommandList;
+    callback attribute acceptedCommandList;
+    callback attribute attributeList;
+    callback attribute featureMap;
+    callback attribute clusterRevision;
+  }
+
+  server cluster GestureConfig {
+    callback attribute generatedCommandList;
+    callback attribute acceptedCommandList;
+    callback attribute attributeList;
+    ram      attribute featureMap default = 0;
+    ram      attribute clusterRevision default = 1;
+    ram      attribute numChannels default = 2;
+    ram      attribute pollMs default = 5;
+    ram      attribute longPressMs default = 600;
+    ram      attribute multiGapMs default = 250;
+    ram      attribute ch1MaxTaps default = 3;
+    ram      attribute ch1HoldEnabled default = true;
+    ram      attribute ch2MaxTaps default = 3;
+    ram      attribute ch2HoldEnabled default = true;
+  }
+}

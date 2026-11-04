@@ -34,5 +34,7 @@ target_compile_options(app PRIVATE -Wno-deprecated-declarations)
 # Add sources from src directory
 add_subdirectory(src)
 
-ncs_configure_data_model()
+ncs_configure_data_model(
+    EXTERNAL_CLUSTERS "GESTURE_CONFIG_CLUSTER"
+)
 # NORDIC SDK APP END

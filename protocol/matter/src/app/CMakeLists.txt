@@ -10,6 +10,7 @@ target_sources(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/matter/matter_commissioning_info.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/matter/matter_network_removal.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/matter/matter_fabric_delegate.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/matter/matter_gesture_config_cluster.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/config/matter_persistent_store.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/ble/ble_config_mode.cpp
     ${REPO_ROOT}/shared/gesture/gesture_engine.cpp

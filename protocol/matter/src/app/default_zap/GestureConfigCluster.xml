@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<configurator>
+  <cluster>
+    <domain>General</domain>
+    <name>GestureConfig</name>
+    <code>0xfff1fc01</code>
+    <define>GESTURE_CONFIG_CLUSTER</define>
+    <description>Runtime-configurable gesture-engine settings, mirroring the Zigbee firmware's 0xFC01 cluster attribute-for-attribute.</description>
+    <attribute side="server" code="0xfff10000" define="NUM_CHANNELS" type="int8u" writable="true" optional="false" default="2" name="NumChannels"/>
+    <attribute side="server" code="0xfff10001" define="POLL_MS" type="int16u" writable="true" optional="false" default="5" name="PollMs"/>
+    <attribute side="server" code="0xfff10002" define="LONG_PRESS_MS" type="int16u" writable="true" optional="false" default="600" name="LongPressMs"/>
+    <attribute side="server" code="0xfff10003" define="MULTI_GAP_MS" type="int16u" writable="true" optional="false" default="250" name="MultiGapMs"/>
+    <attribute side="server" code="0xfff10004" define="CH1_MAX_TAPS" type="int8u" writable="true" optional="false" default="3" name="Ch1MaxTaps"/>
+    <attribute side="server" code="0xfff10005" define="CH1_HOLD_ENABLED" type="boolean" writable="true" optional="false" default="true" name="Ch1HoldEnabled"/>
+    <attribute side="server" code="0xfff10006" define="CH2_MAX_TAPS" type="int8u" writable="true" optional="false" default="3" name="Ch2MaxTaps"/>
+    <attribute side="server" code="0xfff10007" define="CH2_HOLD_ENABLED" type="boolean" writable="true" optional="false" default="true" name="Ch2HoldEnabled"/>
+  </cluster>
+  <deviceType>
+    <name>gesture-config</name>
+    <domain>CHIP</domain>
+    <typeName>Gesture Config</typeName>
+    <profileId editable="false">0x10402</profileId>
+    <deviceId editable="false">0xfff1fc02</deviceId>
+    <class>Simple</class>
+    <scope>Endpoint</scope>
+    <clusters lockOthers="true">
+      <include cluster="GestureConfig" client="false" server="true" clientLocked="false" serverLocked="false"/>
+    </clusters>
+  </deviceType>
+</configurator>

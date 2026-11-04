@@ -8,6 +8,9 @@
 
 #include "board/board.h"
 
+#include "shared/config/persistent_store.h"
+#include "shared/gesture/gesture_engine.h"
+
 #include <platform/CHIPDeviceLayer.h>
 
 struct k_timer;
@@ -23,6 +26,9 @@ public:
 	CHIP_ERROR StartApp();
 
 	void UpdateClusterState();
+
+	SmartSwitch::GestureEngine &GetGestureEngine();
+	SmartSwitch::IPersistentStore &GetPersistentStore();
 
 private:
 	CHIP_ERROR Init();

@@ -11,6 +11,7 @@
 #include "matter/matter_commissioning_info.h"
 #include "matter/matter_fabric_delegate.h"
 #include "matter/matter_factory_reset.h"
+#include "matter/matter_gesture_config_cluster.h"
 #include "matter/matter_network_removal.h"
 #include "matter/matter_switch_protocol.h"
 
@@ -52,6 +53,16 @@ SmartSwitch::MatterFabricDelegate sFabricDelegate;
 SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode);
 } /* namespace */
 
+SmartSwitch::GestureEngine &AppTask::GetGestureEngine()
+{
+	return sGestureEngine;
+}
+
+SmartSwitch::IPersistentStore &AppTask::GetPersistentStore()
+{
+	return sPersistentStore;
+}
+
 void AppTask::ButtonEventHandler(Nrf::ButtonState, Nrf::ButtonMask)
 {
 	/* No on-board buttons (CONFIG_DK_LIBRARY=n); the pulse-switch inputs are handled by the
@@ -69,6 +80,7 @@ CHIP_ERROR AppTask::Init()
 
 	sGestureEngine.Start();
 	sGestureEngine.ApplyConfig(SmartSwitch::ConfigStore::Load(sPersistentStore));
+	SmartSwitch::RefreshGestureConfigAttributes();
 	sBleConfigMode.Init();
 	SmartSwitch::GestureConfigService::Init(sGestureEngine, sBleConfigMode, sPersistentStore, sFactoryReset,
 						 sCommissioningInfo, sNetworkRemoval);

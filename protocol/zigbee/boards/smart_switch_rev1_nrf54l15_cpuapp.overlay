@@ -38,9 +38,6 @@
 	status = "okay";
 };
 
-// The Zigbee toolchain's older Zephyr tree only has the generic nordic,nrf-hfxo binding for this
-// chip (no startup-time-us property - that's a nordic,nrf54l-hfxo addition from a newer NCS core);
-// the driver here just uses its own fixed default instead.
 &hfxo {
 	/delete-property/ startup-time-us;
 };
