@@ -6,6 +6,11 @@
 #include <zephyr/bluetooth/gap.h>
 #include <zephyr/logging/log.h>
 
+#ifdef CONFIG_MCUMGR_TRANSPORT_BT
+#include <zephyr/mgmt/mcumgr/mgmt/callbacks.h>
+#include <zephyr/mgmt/mcumgr/mgmt/mgmt.h>
+#endif
+
 LOG_MODULE_DECLARE(app, CONFIG_CHIP_APP_LOG_LEVEL);
 
 using namespace chip::DeviceLayer;
@@ -28,12 +33,31 @@ const bt_data sScanResponseData[] = {
 BleConfigMode *sInstance;
 
 bt_conn_cb sConnCallbacks{};
+
+#ifdef CONFIG_MCUMGR_TRANSPORT_BT
+mgmt_cb_return GateFirmwareUpdateCommand(uint32_t, mgmt_cb_return, int32_t *rc, uint16_t *, bool *, void *, size_t)
+{
+	if (sInstance->AcceptFirmwareUpdateCommand()) {
+		return MGMT_CB_OK;
+	}
+	*rc = MGMT_ERR_EACCESSDENIED;
+	return MGMT_CB_ERROR_RC;
+}
+
+mgmt_callback sFirmwareUpdateGate = {
+	.callback = GateFirmwareUpdateCommand,
+	.event_id = MGMT_EVT_OP_CMD_RECV,
+};
+#endif
 } /* namespace */
 
 int BleConfigMode::Init()
 {
 	sInstance = this;
 	k_work_init_delayable(&mTimeoutWork, TimeoutHandler);
+#ifdef CONFIG_MCUMGR_TRANSPORT_BT
+	mgmt_callback_register(&sFirmwareUpdateGate);
+#endif
 	sConnCallbacks.connected = &BleConfigMode::Connected;
 	sConnCallbacks.disconnected = &BleConfigMode::Disconnected;
 	return bt_conn_cb_register(&sConnCallbacks);
@@ -77,6 +101,15 @@ void BleConfigMode::OnConfigModeRequested()
 
 	mActive = true;
 	k_work_reschedule(&mTimeoutWork, K_MSEC(kConfigWindowMs));
+}
+
+bool BleConfigMode::AcceptFirmwareUpdateCommand()
+{
+	if (!mActive || !mConn) {
+		return false;
+	}
+	k_work_reschedule(&mTimeoutWork, K_MSEC(kConfigWindowMs));
+	return true;
 }
 
 void BleConfigMode::Stop()

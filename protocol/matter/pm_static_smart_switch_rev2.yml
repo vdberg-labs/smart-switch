@@ -1,0 +1,168 @@
+### Partitions
+# MCUBoot application (immutable)
+mcuboot:
+  address: 0x0
+  region: flash_primary
+  size: 0xD000
+
+
+# MCUBoot primary update partition
+mcuboot_primary:
+  orig_span: &id001
+  - mcuboot_pad
+  - tfm
+  - app
+  span: *id001
+  address: 0xD000
+  region: flash_primary
+  size: 0x15D000
+# TFM secure firmware marker (start of partition)
+tfm_secure:
+  address: 0xD000
+  orig_span: &id004
+  - mcuboot_pad
+  - tfm
+  region: flash_primary
+  size: 0x20000
+  span: *id004
+# MCUboot pad area (start of partition)
+mcuboot_pad:
+  address: 0xD000
+  region: flash_primary
+  size: 0x800
+# MCUboot primary application area
+mcuboot_primary_app:
+  orig_span: &id002
+  - app
+  - tfm
+  span: *id002
+  address: 0xD800
+  region: flash_primary
+  size: 0x15C800
+# TFM secure firmware application
+tfm:
+  address: 0xD800
+  region: flash_primary
+  size: 0x1F800
+# TFM non-secure firmware marker (after TFM secure)
+tfm_nonsecure:
+  address: 0x2D000
+  orig_span: &id005
+  - app
+  region: flash_primary
+  size: 0x13D000
+  span: *id005
+# Actual application (inside TFM non-secure, inside mcuboot primary app)
+app:
+  address: 0x2D000
+  region: flash_primary
+  size: 0x13D000
+
+
+# Factory data required for Matter
+factory_data:
+  address: 0x16A000
+  region: flash_primary
+  size: 0x1000
+# Extra settings
+settings_storage:
+  address: 0x16B000
+  region: flash_primary
+  size: 0xA000
+
+
+
+# TFM storage area (end of flash)
+tfm_storage:
+  address: 0x175000
+  orig_span: &id006
+  - tfm_ps
+  - tfm_its
+  - tfm_otp_nv_counters
+  region: flash_primary
+  size: 0x8000
+  span: *id006
+# TFM Internal Key Storage in flash
+# Keys stored with PSA api are stored here
+tfm_its:
+  address: 0x175000
+  inside:
+  - tfm_storage
+  placement:
+    before:
+    - tfm_otp_nv_counters
+  region: flash_primary
+  size: 0x2000
+tfm_otp_nv_counters:
+  address: 0x177000
+  inside:
+  - tfm_storage
+  placement:
+    before:
+    - tfm_ps
+  region: flash_primary
+  size: 0x2000
+# TFM Protected Storage in flash
+# Keys stored for TLS use are stored here
+tfm_ps:
+  address: 0x179000
+  inside:
+  - tfm_storage
+  region: flash_primary
+  size: 0x4000
+
+
+
+external_flash:
+  address: 0x15D000
+  size: 0x2A3000
+  device: W25Q32JV
+  region: external_flash
+### Bootloader configuration
+
+mcuboot_secondary:
+  address: 0x0
+  orig_span: &id003
+  - mcuboot_secondary_pad
+  - mcuboot_secondary_app
+  region: external_flash
+  size: 0x15D000
+  span: *id003
+mcuboot_secondary_pad:
+  region: external_flash
+  address: 0x0
+  size: 0x800
+mcuboot_secondary_app:
+  region: external_flash
+  address: 0x800
+  size: 0x15C800
+
+
+### RAM
+sram_secure:
+  address: 0x20000000
+  orig_span: &id007
+  - tfm_sram
+  region: sram_primary
+  size: 0xF000
+  span: *id007
+sram_nonsecure:
+  address: 0x2000F000
+  orig_span: &id008
+  - sram_primary
+  region: sram_primary
+  size: 0x31000
+  span: *id008
+tfm_sram:
+  address: 0x20000000
+  inside:
+  - sram_secure
+  placement:
+    after:
+    - start
+  region: sram_primary
+  size: 0xF000
+sram_primary:
+  address: 0x2000F000
+  region: sram_primary
+  size: 0x31000

@@ -21,6 +21,37 @@
             }
         },
         {
+            "name": "debug_build_without_bl_rev2",
+            "displayName": "DEBUG build without bl for rev_2",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/dw_rev2",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev2/nrf54l15/cpuapp/ns",
+                "BOARD_ROOT": "${sourceDir}/../..",
+                "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch_without_bl.yml",
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "EXTRA_CONF_FILE": "${sourceDir}/prj_debug.conf",
+                "DEBUG_BUILD": true,
+                "USE_BOOTLOADER": false
+            }
+        },
+        {
+            "name": "debug_build_rev2",
+            "displayName": "DEBUG build with bl for rev_2",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/db_rev2",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev2/nrf54l15/cpuapp/ns",
+                "BOARD_ROOT": "${sourceDir}/../..",
+                "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch_rev2.yml",
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "EXTRA_CONF_FILE": "${sourceDir}/prj_debug.conf;${sourceDir}/prj_dfu.conf",
+                "DEBUG_BUILD": true,
+                "SB_CONFIG_MCUBOOT_MODE_SWAP_USING_MOVE": "y",
+                "SB_CONFIG_BOOTLOADER_MCUBOOT": "y"
+            }
+        },
+        {
             "name": "debug_build",
             "displayName": "DEBUG build for rev_1",
             "generator": "Ninja",

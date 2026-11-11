@@ -17,6 +17,19 @@
                 "CONF_FILE": "${sourceDir}/prj.conf",
                 "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch.yml"
             }
+        },
+        {
+            "name": "debug_build_without_bl_rev2",
+            "displayName": "DEBUG build without bl for rev_2",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/dw_rev2",
+            "cacheVariables": {
+                "BOARD": "smart_switch_rev2/nrf54l15/cpuapp",
+                "BOARD_ROOT": "${sourceDir}/../..",
+                "DEBUG_BUILD": true,
+                "CONF_FILE": "${sourceDir}/prj.conf",
+                "PM_STATIC_YML_FILE": "${sourceDir}/pm_static_smart_switch.yml"
+            }
         }
     ]
 }

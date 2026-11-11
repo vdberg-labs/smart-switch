@@ -19,6 +19,9 @@ public:
 	bool IsActive() const override { return mActive; }
 	void SuppressResumeOnDisconnect() override { mSuppressResumeOnDisconnect = true; }
 
+	/* True if a client is connected during the config window; also extends the window. */
+	bool AcceptFirmwareUpdateCommand();
+
 private:
 	static constexpr uint32_t kConfigWindowMs = 5 * 60 * 1000; /* 5 minutes */
 

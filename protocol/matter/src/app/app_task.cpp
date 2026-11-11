@@ -8,6 +8,7 @@
 
 #include "ble/ble_config_mode.h"
 #include "config/matter_persistent_store.h"
+#include "dfu/image_confirmation.h"
 #include "matter/matter_commissioning_info.h"
 #include "matter/matter_fabric_delegate.h"
 #include "matter/matter_factory_reset.h"
@@ -50,7 +51,7 @@ SmartSwitch::MatterFactoryReset sFactoryReset;
 SmartSwitch::MatterCommissioningInfo sCommissioningInfo;
 SmartSwitch::MatterNetworkRemoval sNetworkRemoval;
 SmartSwitch::MatterFabricDelegate sFabricDelegate;
-SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode);
+SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode, sNetworkRemoval);
 } /* namespace */
 
 SmartSwitch::GestureEngine &AppTask::GetGestureEngine()
@@ -71,6 +72,8 @@ void AppTask::ButtonEventHandler(Nrf::ButtonState, Nrf::ButtonMask)
 
 CHIP_ERROR AppTask::Init()
 {
+	SmartSwitch::ImageConfirmation::ArmRevertTimer();
+
 	ReturnErrorOnFailure(Nrf::Matter::PrepareServer());
 
 	if (!Nrf::GetBoard().Init(ButtonEventHandler)) {
@@ -87,6 +90,7 @@ CHIP_ERROR AppTask::Init()
 	chip::Server::GetInstance().GetFabricTable().AddFabricDelegate(&sFabricDelegate);
 
 	ReturnErrorOnFailure(Nrf::Matter::RegisterEventHandler(Nrf::Board::DefaultMatterEventHandler, 0));
+	ReturnErrorOnFailure(SmartSwitch::ImageConfirmation::ConfirmOnceServerIsHealthy());
 
 	ReturnErrorOnFailure(sIdentifyCluster.Init());
 	

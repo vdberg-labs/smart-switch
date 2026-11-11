@@ -1,0 +1,22 @@
+# Copyright (c) 2024 Nordic Semiconductor ASA
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: smart_switch_rev2/nrf54l15/cpuapp
+name: Smart-Switch-REV2-nRF54l15-Application
+type: mcu
+arch: arm
+toolchain:
+  - gnuarmemb
+  - zephyr
+sysbuild: true
+ram: 188
+flash: 1428
+supported:
+  - counter
+  - dmic
+  - gpio
+  - i2c
+  - retained_mem
+  - spi
+  - watchdog
+  - i2s

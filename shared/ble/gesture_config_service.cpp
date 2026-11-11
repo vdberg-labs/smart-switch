@@ -29,7 +29,7 @@ constexpr char kConfigSchemaJson[] =
 	R"json({"id":"channel","index":1,"label":"Channel 2 (SWITCH2)"}],)json"
 	R"json("fields":[)json"
 	R"json({"key":"numChannels","label":"Active channels","type":"u8","offset":1,"size":1,"min":1,"max":2,"control":"select","options":[1,2]},)json"
-	R"json({"key":"pollMs","label":"Poll interval (ms)","type":"u16","offset":2,"size":2,"min":1,"max":50},)json"
+	R"json({"key":"pollMs","label":"Debounce (ms)","type":"u16","offset":2,"size":2,"min":1,"max":50},)json"
 	R"json({"key":"longPressMs","label":"Long-press / hold threshold (ms)","type":"u16","offset":4,"size":2,"min":200,"max":5000},)json"
 	R"json({"key":"multiGapMs","label":"Multi-tap gap (ms)","type":"u16","offset":6,"size":2,"min":50,"max":2000},)json"
 	R"json({"key":"maxTaps","label":"Max taps","type":"u8","offset":8,"size":1,"min":1,"max":5,"group":"channel","groupIndex":0},)json"

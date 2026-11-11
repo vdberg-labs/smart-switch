@@ -1,0 +1,40 @@
+board:
+  name: smart_switch_rev2
+  full_name: Smart Switch Rev2
+  vendor: nordic
+  socs:
+    - name: nrf54l15
+      variants:
+        - name: ns
+          cpucluster: cpuapp
+runners:
+  run_once:
+    '--recover':
+      - runners:
+          - nrfjprog
+          - nrfutil
+        run: first
+        groups:
+          - boards:
+              - smart_switch_rev2/nrf54l15/cpuapp
+              - smart_switch_rev2/nrf54l15/cpuapp/ns
+    '--erase':
+      - runners:
+          - nrfjprog
+          - jlink
+          - nrfutil
+        run: first
+        groups:
+          - boards:
+              - smart_switch_rev2/nrf54l15/cpuapp
+              - smart_switch_rev2/nrf54l15/cpuapp/ns
+    '--reset':
+      - runners:
+          - nrfjprog
+          - jlink
+          - nrfutil
+        run: last
+        groups:
+          - boards:
+              - smart_switch_rev2/nrf54l15/cpuapp
+              - smart_switch_rev2/nrf54l15/cpuapp/ns

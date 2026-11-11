@@ -121,6 +121,11 @@
 		margin: 0 0 0.85rem;
 	}
 
+	.update-file { margin-top: 1rem; }
+	.update-actions { margin-top: 1rem; }
+	#update-progress { display: block; width: 100%; margin-top: 1rem; }
+	#update-progress[hidden] { display: none; }
+
 	#log-output {
 		display: none;
 		margin-top: 0.75rem;
@@ -181,6 +186,7 @@
 	<wa-button id="tab-config" size="small" variant="brand">Config</wa-button>
 	<wa-button id="tab-network" size="small" variant="neutral">Network</wa-button>
 	<wa-button id="tab-logs" size="small" variant="neutral">Logs</wa-button>
+	<wa-button id="tab-update" size="small" variant="neutral">Update</wa-button>
 	<wa-button id="tab-reset" size="small" variant="neutral">Reset</wa-button>
 </div>
 
@@ -231,6 +237,19 @@
 	<p class="section-intro">Read the device's retained log.</p>
 	<wa-button id="read-log" disabled>Read log</wa-button>
 	<pre id="log-output"></pre>
+</section>
+
+<section id="section-update" hidden>
+	<div class="code-row">
+		<div class="label">Running firmware</div>
+		<div class="value" id="running-version">&hellip;</div>
+	</div>
+	<p class="section-intro update-file">Choose a signed firmware image (<code>zephyr.signed.bin</code>).</p>
+	<input type="file" id="firmware-file" accept=".bin" />
+	<progress id="update-progress" max="1" value="0" hidden></progress>
+	<div class="actions update-actions">
+		<wa-button id="install-firmware" variant="success" disabled>Install firmware</wa-button>
+	</div>
 </section>
 
 <section id="section-reset" hidden>

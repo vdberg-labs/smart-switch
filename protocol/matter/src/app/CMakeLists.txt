@@ -24,3 +24,8 @@ target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${REPO_ROOT}
 )
+
+if(CONFIG_MCUBOOT_IMG_MANAGER)
+    target_sources(app PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/dfu/image_confirmation.cpp)
+    target_link_options(app INTERFACE -Wl,--wrap=boot_write_img_confirmed)
+endif()

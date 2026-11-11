@@ -30,6 +30,8 @@ import {
 	isValid,
 	parseSchema,
 } from "./schema";
+import { readImageVersion } from "./mcuboot";
+import { SMP_SERVICE_UUID, SmpClient } from "./smp";
 
 interface CommissioningInfo {
 	protocol: string;
@@ -52,6 +54,12 @@ const tabConfigBtn = document.getElementById("tab-config") as HTMLElement & { va
 const tabNetworkBtn = document.getElementById("tab-network") as HTMLElement & { variant: string };
 const tabLogsBtn = document.getElementById("tab-logs") as HTMLElement & { variant: string };
 const tabResetBtn = document.getElementById("tab-reset") as HTMLElement & { variant: string };
+const tabUpdateBtn = document.getElementById("tab-update") as HTMLElement & { variant: string; disabled: boolean };
+const sectionUpdate = document.getElementById("section-update") as HTMLElement;
+const runningVersionEl = document.getElementById("running-version") as HTMLDivElement;
+const firmwareFileEl = document.getElementById("firmware-file") as HTMLInputElement;
+const installBtn = document.getElementById("install-firmware") as HTMLElement & { disabled: boolean; loading: boolean };
+const updateProgressEl = document.getElementById("update-progress") as HTMLProgressElement;
 const sectionConfig = document.getElementById("section-config") as HTMLElement;
 const sectionNetwork = document.getElementById("section-network") as HTMLElement;
 const sectionLogs = document.getElementById("section-logs") as HTMLElement;
@@ -74,6 +82,7 @@ let factoryResetChar: BluetoothRemoteGATTCharacteristic | undefined;
 let logChar: BluetoothRemoteGATTCharacteristic | undefined;
 let commissioningChar: BluetoothRemoteGATTCharacteristic | undefined;
 let removeNetworkChar: BluetoothRemoteGATTCharacteristic | undefined;
+let smpClient: SmpClient | undefined;
 let schema: ConfigSchema | undefined;
 let currentDevice: BluetoothDevice | undefined;
 
@@ -232,20 +241,82 @@ function parseCommissioningInfo(json: string): CommissioningInfo {
 	return parsed as CommissioningInfo;
 }
 
-type Tab = "config" | "network" | "logs" | "reset";
+type Tab = "config" | "network" | "logs" | "update" | "reset";
 
 function showTab(tab: Tab): void {
 	sectionConfig.hidden = tab !== "config";
 	sectionNetwork.hidden = tab !== "network";
 	sectionLogs.hidden = tab !== "logs";
+	sectionUpdate.hidden = tab !== "update";
 	sectionReset.hidden = tab !== "reset";
 	tabConfigBtn.variant = tab === "config" ? "brand" : "neutral";
 	tabNetworkBtn.variant = tab === "network" ? "brand" : "neutral";
 	tabLogsBtn.variant = tab === "logs" ? "brand" : "neutral";
+	tabUpdateBtn.variant = tab === "update" ? "brand" : "neutral";
 	tabResetBtn.variant = tab === "reset" ? "brand" : "neutral";
 
 	if (tab === "network") {
 		void loadCommissionTab();
+	} else if (tab === "update") {
+		void loadUpdateTab();
+	}
+}
+
+async function loadUpdateTab(): Promise<void> {
+	if (!smpClient) {
+		return;
+	}
+
+	try {
+		const images = await smpClient.listImages();
+		runningVersionEl.textContent = images.find((image) => image.active)?.version ?? "Unknown";
+	} catch (err) {
+		setStatus(`Could not read firmware version: ${(err as Error).message}`, "danger");
+	}
+}
+
+async function installFirmware(): Promise<void> {
+	const file = firmwareFileEl.files?.[0];
+	if (!smpClient || !file) {
+		setStatus("Choose a firmware file first.", "danger");
+		return;
+	}
+
+	const image = new Uint8Array(await file.arrayBuffer());
+	const version = readImageVersion(image);
+	if (!version) {
+		setStatus("This is not a signed firmware image. Use zephyr.signed.bin.", "danger");
+		return;
+	}
+
+	const confirmed = confirm(
+		`Install firmware ${version}?\n\n` +
+			"The switch reboots when the upload finishes and is unavailable for a few minutes " +
+			"while it installs. Keep it powered.",
+	);
+	if (!confirmed) {
+		return;
+	}
+
+	try {
+		installBtn.loading = true;
+		updateProgressEl.hidden = false;
+		updateProgressEl.value = 0;
+		setStatus("Uploading firmware...");
+		await smpClient.upload(image, (sent, total) => {
+			updateProgressEl.value = sent / total;
+		});
+
+		await smpClient.scheduleUploadedImage();
+		disconnectingIntentionally = true;
+		await smpClient.reset();
+		setStatus("Upload complete. The switch is rebooting to install the firmware. Keep it powered.", "success");
+	} catch (err) {
+		disconnectingIntentionally = false;
+		setStatus(`Firmware update failed: ${(err as Error).message}`, "danger");
+	} finally {
+		installBtn.loading = false;
+		updateProgressEl.hidden = true;
 	}
 }
 
@@ -312,7 +383,7 @@ async function connect(): Promise<void> {
 		setStatus("Requesting device...");
 		const device = await navigator.bluetooth.requestDevice({
 			filters: [{ services: [SERVICE_UUID] }],
-			optionalServices: [SERVICE_UUID],
+			optionalServices: [SERVICE_UUID, SMP_SERVICE_UUID],
 		});
 		currentDevice = device;
 
@@ -322,8 +393,10 @@ async function connect(): Promise<void> {
 			logChar = undefined;
 			commissioningChar = undefined;
 			removeNetworkChar = undefined;
+			smpClient = undefined;
 			schema = undefined;
 			tabsEl.classList.remove("enabled");
+			installBtn.disabled = true;
 			saveBtn.disabled = true;
 			factoryResetBtn.disabled = true;
 			readLogBtn.disabled = true;
@@ -361,6 +434,11 @@ async function connect(): Promise<void> {
 		logChar = await service?.getCharacteristic(LOG_CHAR_UUID);
 		commissioningChar = await service?.getCharacteristic(COMMISSIONING_CHAR_UUID);
 		removeNetworkChar = await service?.getCharacteristic(REMOVE_NETWORK_CHAR_UUID);
+
+		/* Firmware built without a bootloader has no update service. */
+		smpClient = server ? await SmpClient.open(server).catch(() => undefined) : undefined;
+		tabUpdateBtn.disabled = !smpClient;
+		installBtn.disabled = !smpClient;
 
 		formHost.classList.add("enabled");
 		tabsEl.classList.add("enabled");
@@ -487,5 +565,7 @@ removeNetworkBtn.addEventListener("click", () => void removeNetwork());
 disconnectToCommissionBtn.addEventListener("click", disconnectToCommission);
 tabConfigBtn.addEventListener("click", () => showTab("config"));
 tabNetworkBtn.addEventListener("click", () => showTab("network"));
+installBtn.addEventListener("click", () => void installFirmware());
 tabLogsBtn.addEventListener("click", () => showTab("logs"));
+tabUpdateBtn.addEventListener("click", () => showTab("update"));
 tabResetBtn.addEventListener("click", () => showTab("reset"));

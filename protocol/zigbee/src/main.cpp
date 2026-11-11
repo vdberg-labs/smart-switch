@@ -91,7 +91,7 @@ SmartSwitch::ZigbeePersistentStore sPersistentStore;
 SmartSwitch::ZigbeeFactoryReset sFactoryReset;
 SmartSwitch::ZigbeeNetworkRemoval sNetworkRemoval;
 SmartSwitch::ZigbeeNetworkInfo sCommissioningInfo;
-SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode);
+SmartSwitch::GestureEngine sGestureEngine(sSwitchProtocol, sBleConfigMode, sNetworkRemoval);
 
 void InitClusterAttrs()
 {

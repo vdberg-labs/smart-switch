@@ -1,0 +1,52 @@
+/*
+ * Copyright (c) 2024 Nordic Semiconductor ASA
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+#include "smart_switch_rev2_pinctrl.dtsi"
+
+/ {
+	leds {
+		// Remove once nrf/samples/matter/common is moved to our code base
+		compatible = "gpio-leds";
+	};
+
+	/* Wall-switch inputs: active-low dry contacts (pressed = GND), 1k series + 100 nF to GND.
+	 * rev2 has NO external pull-up (rev1 had 10k to 3V3), so the nRF's internal pull-up is
+	 * required - without it the inputs sit low and read as permanently pressed.
+	 * rev2 moved both to port 1, which has GPIOTE (rev1's P2.04 did not).
+	 */
+	buttons {
+		compatible = "gpio-keys";
+
+		button0: button_0 {
+			gpios = <&gpio1 13 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			label = "SWITCH";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+
+		button1: button_1 {
+			gpios = <&gpio1 14 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;
+			label = "SWITCH2";
+			zephyr,code = <INPUT_KEY_1>;
+		};
+	};
+
+	aliases {
+		sw0 = &button0;
+		sw1 = &button1;
+		watchdog0 = &wdt31;
+	};
+};
+
+&uart20 {
+	current-speed = <115200>;
+	pinctrl-0 = <&uart20_default>;
+	pinctrl-1 = <&uart20_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+&hfxo {
+	startup-time-us = <854>;
+};
